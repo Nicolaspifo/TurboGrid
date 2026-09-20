@@ -1,0 +1,71 @@
+# ===== Unity generadas =====
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Uu]ser[Ss]ettings/
+[Mm]emoryCaptures/
+
+# Asset meta data should only be ignored when the corresponding asset is also ignored
+!/[Aa]ssets/**/*.meta
+
+# Ignora archivos de bloqueo (tambien puedes borrarlos manualmente para forzar reimport)
+*.tmp
+
+# Autogenerado por Unity
+/[Aa]ssets/AssetStoreTools*
+/[Aa]ssets/Plugins/Editor/JetBrains*
+
+# Ignora archivos de auto-generados por Visual Studio / Rider / VS Code
+.vs/
+.vscode/
+.idea/
+*.csproj
+*.unityproj
+*.sln
+*.suo
+*.tmp
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+
+# Archivos de compilacion generados por Unity
+*.apk
+*.aab
+*.unitypackage
+*.app
+
+# Archivos de Crashlytics generados durante el build
+crashlytics-build.properties
+
+# Archivos generados por plugins de packman
+/[Aa]ssets/[Ss]treamingAssets/aa.meta
+/[Aa]ssets/[Ss]treamingAssets/aa/*
+
+# ===== Netcode for GameObjects / Multiplayer Services =====
+# Config local de Relay/Lobby si llegas a guardar alguna credencial de prueba
+*.env
+appsettings.local.json
+
+# ===== macOS =====
+.DS_Store
+
+# ===== Windows =====
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# ===== Recordings de video/testing =====
+*.mp4
+*.mov
+!/[Aa]ssets/**/*.mp4
+!/[Aa]ssets/**/*.mov
