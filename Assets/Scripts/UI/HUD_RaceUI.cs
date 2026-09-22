@@ -16,7 +16,15 @@ namespace TurboGrid
         [SerializeField] private TMP_Text countdownText;
         [SerializeField] private GameObject countdownPanel;
 
+
+        public static HUD_RaceUI Instance { get; private set; }
+
         private PlayerNetworkData _localPlayerData;
+
+        private void Awake()
+        {
+            Instance = this;
+        }
 
         public void BindLocalPlayer(PlayerNetworkData playerData)
         {

@@ -74,6 +74,7 @@ namespace TurboGrid
 
             // Movimiento tipo "twin-ish": avanza en la direccion del joystick,
             // y rota el sprite del auto hacia esa direccion para dar sensacion de carrera.
+            //Debug.Log(_inputDirection);
             _rb.linearVelocity = moveDir * (baseSpeed * _speedMultiplier);
 
             if (moveDir.sqrMagnitude > 0.01f)

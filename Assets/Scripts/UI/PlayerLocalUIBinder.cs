@@ -1,16 +1,8 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace TurboGrid
 {
-    /// <summary>
-    /// Cuelga este script del PREFAB del auto (Player_Car). Cuando el auto
-    /// spawnea y es el del jugador LOCAL (IsOwner), busca los elementos de UI
-    /// ya presentes en la escena de carrera (Canvas persistente) y los enlaza
-    /// a este auto: joystick, botones de habilidad y HUD.
-    ///
-    /// Asi evitas instanciar un Canvas por jugador: hay un solo Canvas en la
-    /// escena y este script simplemente lo "conecta" al auto correcto.
-    /// </summary>
     public class PlayerLocalUIBinder : MonoBehaviour
     {
         [SerializeField] private CarController carController;
@@ -18,21 +10,42 @@ namespace TurboGrid
         [SerializeField] private DrsTurboAbility drsAbility;
         [SerializeField] private PinchazoAbility pinchazoAbility;
 
+        private bool _isBound;
+
+        private void OnEnable()
+        {
+            SceneManager.sceneLoaded += HandleSceneLoaded;
+        }
+
+        private void OnDisable()
+        {
+            SceneManager.sceneLoaded -= HandleSceneLoaded;
+        }
+
         private void Start()
         {
+            TryBindToRaceUI();
+        }
+
+        private void HandleSceneLoaded(Scene scene, LoadSceneMode mode)
+        {
+            TryBindToRaceUI();
+        }
+
+        private void TryBindToRaceUI()
+        {
+            if (_isBound) return;
             if (!carController.IsOwner) return;
+            if (VirtualJoystick.Instance == null || HUD_RaceUI.Instance == null) return;
 
-            var joystick = FindObjectOfType<VirtualJoystick>();
-            joystick?.BindLocalCar(carController);
+            VirtualJoystick.Instance.BindLocalCar(carController);
 
-            var abilityButtons = FindObjectsOfType<AbilityButtonUI>();
-            // Convencion: coloca el boton de DRS primero en la jerarquia y el de Pinchazo segundo,
-            // o mejor aun, expon dos referencias serializadas separadas en un HUD manager propio.
-            if (abilityButtons.Length > 0) abilityButtons[0].Bind(drsAbility);
-            if (abilityButtons.Length > 1) abilityButtons[1].Bind(pinchazoAbility);
+            if (AbilityButtonUI.AllButtons.Count > 0) AbilityButtonUI.AllButtons[0].Bind(drsAbility);
+            if (AbilityButtonUI.AllButtons.Count > 1) AbilityButtonUI.AllButtons[1].Bind(pinchazoAbility);
 
-            var hud = FindObjectOfType<HUD_RaceUI>();
-            hud?.BindLocalPlayer(playerData);
+            HUD_RaceUI.Instance.BindLocalPlayer(playerData);
+
+            _isBound = true;
         }
     }
 }

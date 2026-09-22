@@ -24,7 +24,7 @@ namespace TurboGrid
             PlayerNetworkData closest = null;
             float closestDist = GameConstants.PINCHAZO_RANGE;
 
-            foreach (var player in FindObjectsOfType<PlayerNetworkData>())
+            foreach (var player in FindObjectsByType<PlayerNetworkData>(FindObjectsSortMode.None))
             {
                 if (player.OwnerClientId == OwnerClientId) continue;
 

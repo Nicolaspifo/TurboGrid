@@ -19,7 +19,7 @@ namespace TurboGrid
             false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
 
         public NetworkVariable<FixedString32Bytes> PlayerName = new NetworkVariable<FixedString32Bytes>(
-            default, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
+            default, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
 
         private CarController _carController;
         private float _stunEndTime;

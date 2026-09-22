@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -14,11 +15,20 @@ namespace TurboGrid
         [SerializeField] private Button button;
         [SerializeField] private Image cooldownFillImage; // Image Type = Filled, Fill Method = Radial 360
 
+
+        public static readonly List<AbilityButtonUI> AllButtons = new List<AbilityButtonUI>();
+
         private AbilityBase _ability;
 
         private void Awake()
         {
             button.onClick.AddListener(HandleClick);
+            AllButtons.Add(this);
+        }
+
+        private void OnDestroy()
+        {
+            AllButtons.Remove(this);
         }
 
         public void Bind(AbilityBase ability)

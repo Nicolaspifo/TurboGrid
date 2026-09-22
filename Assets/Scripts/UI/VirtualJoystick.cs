@@ -21,6 +21,13 @@ namespace TurboGrid
 
         public Vector2 Direction { get; private set; }
 
+
+        public static VirtualJoystick Instance { get; private set; }
+
+        private void Awake()
+        {
+            Instance = this;
+        }
         // Se asigna en runtime cuando el auto local del jugador spawnea.
         private CarController _localCarController;
 

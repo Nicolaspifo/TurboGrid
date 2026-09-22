@@ -134,7 +134,7 @@ namespace TurboGrid
             CurrentState.Value = RaceState.Finished;
 
             // Congela a todos los jugadores
-            foreach (var player in FindObjectsOfType<PlayerNetworkData>())
+            foreach (var player in FindObjectsByType<PlayerNetworkData>(FindObjectsSortMode.None))
             {
                 player.SetStunnedServer(true, float.MaxValue); // bloqueo permanente hasta reiniciar
             }
@@ -142,7 +142,7 @@ namespace TurboGrid
 
         private void BuildAndBroadcastFinalResultsLocal()
         {
-            var results = FindObjectsOfType<PlayerNetworkData>()
+            var results = FindObjectsByType<PlayerNetworkData>(FindObjectsSortMode.None)
                 .Select(p => (p.OwnerClientId, p.PlayerName.Value, p.FuelCount.Value))
                 .OrderByDescending(r => r.Item3)
                 .ToList();
