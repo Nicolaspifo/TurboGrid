@@ -2,7 +2,7 @@
 %TAG !u! tag:unity3d.com,2011:
 --- !u!78 &1
 TagManager:
-  serializedVersion: 2
+  serializedVersion: 3
   tags: []
   layers:
   - Default
@@ -41,3 +41,14 @@ TagManager:
   - name: Default
     uniqueID: 0
     locked: 0
+  - name: Track
+    uniqueID: 3382034235
+    locked: 0
+  - name: FuelTokens
+    uniqueID: 594953723
+    locked: 0
+  - name: Cars
+    uniqueID: 3970508613
+    locked: 0
+  m_RenderingLayers:
+  - Default
