@@ -4069,7 +4069,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::TurboGrid.FuelSpawner
   ShowTopMostFoldoutHeaderGroup: 1
   waypointsRoot: {fileID: 2005348034}
-  fuelTokenPrefab: {fileID: 0}
+  fuelTokenPrefab: {fileID: 5249460428654095394, guid: 07c2a3d802a97844dad2e78b0f40791b, type: 3}
 --- !u!1 &1386609544
 GameObject:
   m_ObjectHideFlags: 0
