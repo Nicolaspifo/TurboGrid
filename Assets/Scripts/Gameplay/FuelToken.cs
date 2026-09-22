@@ -17,6 +17,7 @@ namespace TurboGrid
 
         private void OnTriggerEnter2D(Collider2D other)
         {
+            Debug.Log($"[FuelToken] Trigger con: {other.name}, IsServer={IsServer}");
             if (!IsServer) return;   // la logica de recoleccion vive solo en el servidor
             if (_consumed) return;
 

@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 3022306069392711419}
   - component: {fileID: 3435249236803883051}
   - component: {fileID: 5253974117329440127}
+  - component: {fileID: -6462344619137177281}
   m_Layer: 0
   m_Name: FuelToken
   m_TagString: Untagged
@@ -156,3 +157,16 @@ MonoBehaviour:
   AutoObjectParentSync: 1
   SyncOwnerTransformWhenParented: 1
   AllowOwnerToParent: 0
+--- !u!114 &-6462344619137177281
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5249460428654095394}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 73399141c9ad95a4f964bf6df6a44b14, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::TurboGrid.FuelToken
+  ShowTopMostFoldoutHeaderGroup: 1

@@ -21,7 +21,7 @@ namespace TurboGrid
         private Rigidbody2D _rb;
         private Vector2 _inputDirection;
         private bool _inputLocked;
-        private float _speedMultiplier = 1f;
+        private float _speedMultiplier = 20f;
 
         public bool IsInputLocked => _inputLocked;
 
