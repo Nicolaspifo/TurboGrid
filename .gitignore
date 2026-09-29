@@ -69,3 +69,15 @@ $RECYCLE.BIN/
 *.mov
 !/[Aa]ssets/**/*.mp4
 !/[Aa]ssets/**/*.mov
+
+# --- TurboGrid ---
+# Carpetas de builds con cualquier nombre (ej. "builds:ios", "buildios", "BuildAndroid")
+/[Bb]uild*/
+# Escenas de recuperacion que Unity crea tras un cierre inesperado
+/[Aa]ssets/_Recovery/
+/[Aa]ssets/_Recovery.meta
+# Resultados del paquete de pruebas de rendimiento
+/[Aa]ssets/[Rr]esources/PerformanceTestRun*
+# Archivos temporales de Multiplayer Play Mode / Unity
+.utmp/
+*.slnx
