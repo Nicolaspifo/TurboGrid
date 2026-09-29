@@ -30,6 +30,10 @@ namespace TurboGrid
         // Nombres recibidos en la aprobacion, pendientes de registrar en SessionState.
         private readonly Dictionary<ulong, string> _pendingNames = new Dictionary<ulong, string>();
 
+        // Momento en que se aprobo cada conexion (para limpiar las que nunca terminan de conectar).
+        private readonly Dictionary<ulong, float> _approvedAt = new Dictionary<ulong, float>();
+        private const float CONNECTING_TIMEOUT = 20f;
+
         public System.Action<ulong> OnPlayerJoined;
         public System.Action<ulong> OnPlayerLeft;
 
@@ -90,6 +94,7 @@ namespace TurboGrid
             nm.NetworkConfig.ConnectionData = Encoding.UTF8.GetBytes(name ?? string.Empty);
             _connectedClientIds.Clear();
             _pendingNames.Clear();
+            _approvedAt.Clear();
             _returningToMenu = false;
         }
 
@@ -119,6 +124,35 @@ namespace TurboGrid
                 ? Encoding.UTF8.GetString(request.Payload)
                 : string.Empty;
             _pendingNames[request.ClientNetworkId] = requestedName;
+
+            // El host ve de inmediato al piloto como "Conectando..." mientras se sincroniza.
+            if (!isHostItself && SessionState.Instance != null)
+            {
+                _approvedAt[request.ClientNetworkId] = Time.unscaledTime;
+                SessionState.Instance.AddPlayerServer(request.ClientNetworkId, requestedName, PlayerSlot.CONECTANDO);
+            }
+        }
+
+        private void Update()
+        {
+            // Quitar de la sala a quien quedo "Conectando..." y nunca termino de entrar.
+            var nm = NetworkManager.Singleton;
+            if (_approvedAt.Count == 0 || nm == null || !nm.IsServer || SessionState.Instance == null) return;
+
+            List<ulong> expired = null;
+            foreach (var pair in _approvedAt)
+            {
+                if (Time.unscaledTime - pair.Value < CONNECTING_TIMEOUT) continue;
+                if (_connectedClientIds.Contains(pair.Key)) continue;
+                (expired ??= new List<ulong>()).Add(pair.Key);
+            }
+            if (expired == null) return;
+            foreach (ulong id in expired)
+            {
+                _approvedAt.Remove(id);
+                _pendingNames.Remove(id);
+                SessionState.Instance.RemovePlayerServer(id);
+            }
         }
 
         private void HandleServerStarted()
@@ -161,9 +195,11 @@ namespace TurboGrid
             if (!_connectedClientIds.Contains(clientId))
                 _connectedClientIds.Add(clientId);
 
+            _approvedAt.Remove(clientId);
             if (SessionState.Instance == null) return;
             _pendingNames.TryGetValue(clientId, out string name);
-            SessionState.Instance.AddPlayerServer(clientId, name);
+            // Ya termino de conectarse: pasa de "Conectando..." a "Conectado".
+            SessionState.Instance.AddPlayerServer(clientId, name, PlayerSlot.CONECTADO);
         }
 
         private void HandleClientDisconnected(ulong clientId)
@@ -171,6 +207,7 @@ namespace TurboGrid
             var nm = NetworkManager.Singleton;
             _connectedClientIds.Remove(clientId);
             _pendingNames.Remove(clientId);
+            _approvedAt.Remove(clientId);
 
             if (nm != null && nm.IsServer && SessionState.Instance != null)
                 SessionState.Instance.RemovePlayerServer(clientId);

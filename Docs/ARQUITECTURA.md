@@ -46,10 +46,14 @@ El único dato que manda el cliente es la posición de **su propio auto** (`Netw
 ```
 Pantalla Inicio (Jugar / Salir) -> Pantalla Instrucciones (Siguiente / Atras)
         │
-MainMenu (lobby)
-  Crear partida / Unirse con código → lista de pilotos (2-4)
-  Opciones: nombre, controles (cada uno el suyo), circuito (host: aleatorio o manual)
-  Host toca JUGAR → NetworkSceneManager carga el circuito en todos
+MainMenu
+  Nombre del piloto (obligatorio) → Crear partida / Unirse con código
+        │
+Sala de carrera (panel dentro de MainMenu)
+  Código en grande + 4 puestos: auto, nombre y estado
+  (Anfitrión / Conectando... / En la sala / ¡Listo! / Esperando...)
+  Invitados: ¡ESTOY LISTO!   ·   Opciones: controles (cada uno), circuito (host)
+  Host: COMENZAR (2+ pilotos y todos listos) → NetworkSceneManager carga el circuito en todos
         │
 Circuito (Game / Circuito2 / Circuito3)
   RaceManager espera a que todos carguen

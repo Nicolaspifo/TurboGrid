@@ -440,9 +440,7 @@ namespace TurboGrid.EditorTools
             // Referencias existentes que podian estar vacias
             AssignIfEmpty(lobby, "hostButton", FindComp<Button>("BotonCrearPartida"));
             AssignIfEmpty(lobby, "joinButton", FindComp<Button>("BotonUnirse"));
-            AssignIfEmpty(lobby, "startRaceButton", FindComp<Button>("BotonJugar"));
             AssignIfEmpty(lobby, "joinCodeInputField", FindComp<TMP_InputField>("InputFieldConexion"));
-            AssignIfEmpty(lobby, "joinCodeDisplayText", FindComp<TMP_Text>("TextoCodigoCreacion"));
             AssignIfEmpty(lobby, "statusText", FindComp<TMP_Text>("TextoEstado"));
 
             RemoveGenerated(canvas.transform);
@@ -451,58 +449,140 @@ namespace TurboGrid.EditorTools
             Transform root = canvas.transform;
             Sprite box = S("PANTALLA4/Elemento_Espacio.png");
             Sprite arrow = S("PANTALLA2/Boton_Siguiente.png");
+            Sprite panelSprite = LoadSprite(GENERATED + "Panel.png");
 
-            // Lista de pilotos (debajo del estado)
-            var players = MakeText(root, PREFIX + "TextoJugadores", "", 15, TextAlignmentOptions.Center, Color.white);
-            SetRect(players.rectTransform, Center, Center, Center, new Vector2(12f, -104f), new Vector2(330f, 40f));
-            players.enableAutoSizing = true;
-            players.fontSizeMin = 9;
-            players.fontSizeMax = 15;
+            // ---------------- Pantalla principal: nombre obligatorio ----------------
+            // El codigo y el boton Jugar ahora viven en la Sala.
+            SetActiveIfFound("TextoCodigoCreacion", false);
+            SetActiveIfFound("BotonJugar", false);
+
+            var nameLabel = MakeText(root, PREFIX + "EtiquetaNombre", "TU NOMBRE DE PILOTO", 14, TextAlignmentOptions.Center, new Color(1f, 0.82f, 0.3f));
+            SetRect(nameLabel.rectTransform, Center, Center, Center, new Vector2(12f, 120f), new Vector2(240f, 24f));
+            var nameInput = MakeInputField(root, PREFIX + "InputNombre", null, "Escribe tu nombre", 18);
+            ((Image)nameInput.targetGraphic).color = new Color(1f, 1f, 1f, 0.001f); // se ve la caja "Fondo (2)" de atras
+            SetRect((RectTransform)nameInput.transform, Center, Center, Center, new Vector2(12f, 81f), new Vector2(190f, 44f));
 
             // Boton "Opciones" (arriba a la izquierda)
             var optionsBtn = MakeButton(root, PREFIX + "BotonOpciones", box, "Opciones", 15);
             SetRect((RectTransform)optionsBtn.transform, TopLeft, TopLeft, Center, new Vector2(70f, -26f), new Vector2(118f, 34f));
 
-            // Panel de opciones (overlay)
+            // ---------------- Sala de carrera ----------------
+            var sala = MakeImage(root, PREFIX + "PanelSala", S("PANTALLA5/Fondo_pantallas - copia (3).png"), Color.white);
+            Stretch(sala.rectTransform);
+            if (sala.sprite == null) sala.color = new Color(0.06f, 0.14f, 0.36f, 1f);
+
+            var salaTitle = MakeImage(sala.transform, "Titulo", S("PANTALLA5/Elemento_1.png"), Color.white);
+            salaTitle.preserveAspect = true;
+            SetRect(salaTitle.rectTransform, Center, Center, Center, new Vector2(0f, 150f), new Vector2(300f, 58f));
+
+            var code = MakeText(sala.transform, "Codigo", "CODIGO: ------", 30, TextAlignmentOptions.Center, Color.white);
+            SetRect(code.rectTransform, Center, Center, Center, new Vector2(0f, 104f), new Vector2(500f, 38f));
+            code.outlineWidth = 0.2f;
+            code.outlineColor = new Color32(10, 20, 50, 255);
+            var codeHint = MakeText(sala.transform, "AyudaCodigo", "Compartelo con tus amigos para que se unan", 12, TextAlignmentOptions.Center, new Color(1f, 1f, 1f, 0.75f));
+            SetRect(codeHint.rectTransform, Center, Center, Center, new Vector2(0f, 80f), new Vector2(500f, 18f));
+
+            // 4 puestos con el auto que le toca a cada uno
+            var carSprites = new[] { "Vehiculo_1", "Vehiculo_2", "Vehiculo_3" }
+                .Select(n => AssetDatabase.LoadAssetAtPath<GameObject>(PREFABS + n + ".prefab"))
+                .Select(p => p != null && p.GetComponent<SpriteRenderer>() != null ? p.GetComponent<SpriteRenderer>().sprite : null)
+                .ToArray();
+
+            var slotRoots = new Object[4];
+            var slotCars = new Object[4];
+            var slotNames = new Object[4];
+            var slotStatus = new Object[4];
+            for (int i = 0; i < 4; i++)
+            {
+                float x = -270f + i * 180f;
+                var slot = MakeImage(sala.transform, "Puesto" + (i + 1), panelSprite, new Color(0.05f, 0.15f, 0.4f, 0.85f));
+                slot.type = Image.Type.Sliced;
+                SetRect(slot.rectTransform, Center, Center, Center, new Vector2(x, -5f), new Vector2(170f, 145f));
+                var outline = slot.gameObject.AddComponent<Outline>();
+                outline.effectColor = new Color(0.02f, 0.04f, 0.1f, 1f);
+                outline.effectDistance = new Vector2(2f, -2f);
+
+                var car = MakeImage(slot.transform, "Auto", carSprites.Length > 0 ? carSprites[i % carSprites.Length] : null, Color.white);
+                car.preserveAspect = true;
+                car.raycastTarget = false;
+                SetRect(car.rectTransform, Top, Top, Center, new Vector2(0f, -40f), new Vector2(44f, 64f));
+
+                var pname = MakeText(slot.transform, "Nombre", "PILOTO " + (i + 1), 16, TextAlignmentOptions.Center, Color.white);
+                SetRect(pname.rectTransform, Center, Center, Center, new Vector2(0f, -22f), new Vector2(160f, 24f));
+                pname.enableAutoSizing = true;
+                pname.fontSizeMin = 9;
+                pname.fontSizeMax = 16;
+
+                var pstatus = MakeText(slot.transform, "Estado", "ESPERANDO...", 14, TextAlignmentOptions.Center, new Color(0.95f, 0.3f, 0.3f));
+                SetRect(pstatus.rectTransform, Center, Center, Center, new Vector2(0f, -48f), new Vector2(160f, 22f));
+
+                slotRoots[i] = slot.gameObject;
+                slotCars[i] = car;
+                slotNames[i] = pname;
+                slotStatus[i] = pstatus;
+            }
+
+            var leave = MakeButton(sala.transform, "BotonSalir", box, "SALIR", 16);
+            SetRect((RectTransform)leave.transform, Center, Center, Center, new Vector2(-300f, -125f), new Vector2(120f, 42f));
+            var salaOptions = MakeButton(sala.transform, "BotonOpciones", box, "OPCIONES", 16);
+            SetRect((RectTransform)salaOptions.transform, Center, Center, Center, new Vector2(300f, -125f), new Vector2(120f, 42f));
+
+            var start = MakeButton(sala.transform, "BotonComenzar", S("PANTALLA5/Boton_comenzar.png"), "", 16);
+            ((Image)start.targetGraphic).preserveAspect = true;
+            SetRect((RectTransform)start.transform, Center, Center, Center, new Vector2(0f, -125f), new Vector2(180f, 57f));
+
+            var ready = MakeButton(sala.transform, "BotonListo", LoadSprite(GENERATED + "Pedal.png"), "¡ESTOY LISTO!", 18);
+            ((Image)ready.targetGraphic).color = new Color(0.35f, 0.85f, 0.3f);
+            SetRect((RectTransform)ready.transform, Center, Center, Center, new Vector2(0f, -125f), new Vector2(200f, 50f));
+            var readyText = ready.GetComponentInChildren<TMP_Text>();
+
+            var salaStatus = MakeText(sala.transform, "Estado", "", 13, TextAlignmentOptions.Center, Color.white);
+            SetRect(salaStatus.rectTransform, Center, Center, Center, new Vector2(0f, -163f), new Vector2(640f, 22f));
+
+            // ---------------- Panel de opciones (encima de todo) ----------------
             var overlay = MakeImage(root, PREFIX + "PanelOpciones", null, new Color(0f, 0f, 0f, 0.7f));
             Stretch(overlay.rectTransform);
-            var panel = MakeImage(overlay.transform, "Caja", LoadSprite(GENERATED + "Panel.png"), new Color(0.07f, 0.2f, 0.45f, 0.97f));
+            var panel = MakeImage(overlay.transform, "Caja", panelSprite, new Color(0.07f, 0.2f, 0.45f, 0.97f));
             panel.type = Image.Type.Sliced;
-            SetRect(panel.rectTransform, Center, Center, Center, Vector2.zero, new Vector2(520f, 300f));
+            SetRect(panel.rectTransform, Center, Center, Center, Vector2.zero, new Vector2(520f, 250f));
 
             var title = MakeText(panel.transform, "Titulo", "OPCIONES", 28, TextAlignmentOptions.Center, Color.white);
-            SetRect(title.rectTransform, Center, Center, Center, new Vector2(0f, 118f), new Vector2(400f, 40f));
+            SetRect(title.rectTransform, Center, Center, Center, new Vector2(0f, 94f), new Vector2(400f, 40f));
 
-            // Fila: nombre
-            var nameLabel = MakeText(panel.transform, "EtiquetaNombre", "Piloto", 18, TextAlignmentOptions.Right, new Color(1f, 0.8f, 0.3f));
-            SetRect(nameLabel.rectTransform, Center, Center, Center, new Vector2(-150f, 62f), new Vector2(150f, 34f));
-            var nameInput = MakeInputField(panel.transform, "InputNombre", box, "Tu nombre", 17);
-            SetRect((RectTransform)nameInput.transform, Center, Center, Center, new Vector2(70f, 62f), new Vector2(240f, 40f));
-
-            // Fila: controles
             var ctrlLabel = MakeText(panel.transform, "EtiquetaControles", "Controles", 18, TextAlignmentOptions.Right, new Color(1f, 0.8f, 0.3f));
-            SetRect(ctrlLabel.rectTransform, Center, Center, Center, new Vector2(-150f, 10f), new Vector2(150f, 34f));
-            MakeSelector(panel.transform, "SelectorControles", arrow, box, new Vector2(70f, 10f), out var ctrlText, out var ctrlPrev, out var ctrlNext);
+            SetRect(ctrlLabel.rectTransform, Center, Center, Center, new Vector2(-150f, 40f), new Vector2(150f, 34f));
+            MakeSelector(panel.transform, "SelectorControles", arrow, box, new Vector2(70f, 40f), out var ctrlText, out var ctrlPrev, out var ctrlNext);
 
-            // Fila: circuito (solo host)
             var mapRow = MakeUI(panel.transform, "FilaCircuito");
-            SetRect(mapRow, Center, Center, Center, new Vector2(0f, -42f), new Vector2(500f, 44f));
+            SetRect(mapRow, Center, Center, Center, new Vector2(0f, -12f), new Vector2(500f, 44f));
             var mapLabel = MakeText(mapRow, "EtiquetaCircuito", "Circuito", 18, TextAlignmentOptions.Right, new Color(1f, 0.8f, 0.3f));
             SetRect(mapLabel.rectTransform, Center, Center, Center, new Vector2(-150f, 0f), new Vector2(150f, 34f));
             MakeSelector(mapRow, "SelectorCircuito", arrow, box, new Vector2(70f, 0f), out var mapText, out var mapPrev, out var mapNext);
 
             var hint = MakeText(panel.transform, "Ayuda", "El circuito lo elige quien crea la partida", 12, TextAlignmentOptions.Center, new Color(1f, 1f, 1f, 0.7f));
-            SetRect(hint.rectTransform, Center, Center, Center, new Vector2(0f, -78f), new Vector2(460f, 22f));
+            SetRect(hint.rectTransform, Center, Center, Center, new Vector2(0f, -48f), new Vector2(460f, 22f));
 
             var closeBtn = MakeButton(panel.transform, "BotonListo", LoadSprite(UI + "PANTALLA2/Boton_Listo.png"), "", 16);
-            SetRect((RectTransform)closeBtn.transform, Center, Center, Center, new Vector2(0f, -115f), new Vector2(170f, 49f));
+            SetRect((RectTransform)closeBtn.transform, Center, Center, Center, new Vector2(0f, -92f), new Vector2(170f, 49f));
 
-            // Conectar al LobbyUI
-            SetRef(lobby, "playersText", players);
+            // ---------------- Conectar al LobbyUI ----------------
+            SetRef(lobby, "playerNameInput", nameInput);
+            SetRef(lobby, "salaPanel", sala.gameObject);
+            SetRef(lobby, "joinCodeDisplayText", code);
+            SetRef(lobby, "salaStatusText", salaStatus);
+            SetRef(lobby, "startRaceButton", start);
+            SetRef(lobby, "readyButton", ready);
+            SetRef(lobby, "readyButtonText", readyText);
+            SetRef(lobby, "leaveButton", leave);
+            SetRef(lobby, "salaOptionsButton", salaOptions);
+            SetArray(lobby, "slotRoots", slotRoots);
+            SetArray(lobby, "slotCars", slotCars);
+            SetArray(lobby, "slotNames", slotNames);
+            SetArray(lobby, "slotStatus", slotStatus);
+
             SetRef(lobby, "optionsButton", optionsBtn);
             SetRef(lobby, "optionsPanel", overlay.gameObject);
             SetRef(lobby, "closeOptionsButton", closeBtn);
-            SetRef(lobby, "playerNameInput", nameInput);
             SetRef(lobby, "controlSchemeText", ctrlText);
             SetRef(lobby, "controlPrevButton", ctrlPrev);
             SetRef(lobby, "controlNextButton", ctrlNext);
@@ -511,9 +591,16 @@ namespace TurboGrid.EditorTools
             SetRef(lobby, "mapPrevButton", mapPrev);
             SetRef(lobby, "mapNextButton", mapNext);
 
+            sala.gameObject.SetActive(false);
             overlay.gameObject.SetActive(false);
             SaveScene(scene);
-            Log.Add("MainMenu: panel de Opciones (nombre, controles, circuito), lista de pilotos, aprobacion de conexiones.");
+            Log.Add("MainMenu: nombre obligatorio, Sala de carrera (codigo, puestos, estados, LISTO/COMENZAR) y Opciones.");
+        }
+
+        private static void SetActiveIfFound(string name, bool active)
+        {
+            var t = FindInScene<Transform>(name);
+            if (t != null) t.gameObject.SetActive(active);
         }
 
         private static void MakeSelector(Transform parent, string name, Sprite arrow, Sprite box, Vector2 pos,

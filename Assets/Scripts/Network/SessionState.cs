@@ -11,19 +11,30 @@ namespace TurboGrid
     /// </summary>
     public struct PlayerSlot : INetworkSerializable, IEquatable<PlayerSlot>
     {
+        // Estados dentro de la sala
+        public const byte CONECTANDO = 0; // aprobado, sincronizando con el host
+        public const byte CONECTADO = 1;  // ya esta en la sala
+        public const byte LISTO = 2;      // toco "LISTO"
+
         public ulong ClientId;
         public FixedString32Bytes Name;
         public int SlotIndex;
+        public byte State;
+
+        public bool IsHost => ClientId == NetworkManager.ServerClientId;
+        public bool IsReady => State == LISTO;
+        public bool IsConnecting => State == CONECTANDO;
 
         public void NetworkSerialize<T>(BufferSerializer<T> serializer) where T : IReaderWriter
         {
             serializer.SerializeValue(ref ClientId);
             serializer.SerializeValue(ref Name);
             serializer.SerializeValue(ref SlotIndex);
+            serializer.SerializeValue(ref State);
         }
 
         public bool Equals(PlayerSlot other) =>
-            ClientId == other.ClientId && Name.Equals(other.Name) && SlotIndex == other.SlotIndex;
+            ClientId == other.ClientId && Name.Equals(other.Name) && SlotIndex == other.SlotIndex && State == other.State;
 
         public override bool Equals(object obj) => obj is PlayerSlot other && Equals(other);
 
@@ -111,10 +122,74 @@ namespace TurboGrid
 
         // ---------------- Solo servidor ----------------
 
-        public void AddPlayerServer(ulong clientId, string requestedName)
+        /// <summary>
+        /// La sala se puede arrancar si hay al menos 2 pilotos, nadie se esta conectando
+        /// y todos los invitados tocaron LISTO (el host no necesita marcar listo).
+        /// </summary>
+        public bool CanStart(out string reason)
+        {
+            int count = PlayerCount;
+            if (count < GameConstants.MIN_PLAYERS)
+            {
+                reason = $"Esperando pilotos ({count}/{GameConstants.MAX_PLAYERS})... comparte el codigo";
+                return false;
+            }
+            int notReady = 0;
+            foreach (var p in Players)
+            {
+                if (p.IsConnecting)
+                {
+                    reason = $"{p.Name} se esta conectando...";
+                    return false;
+                }
+                if (!p.IsHost && !p.IsReady) notReady++;
+            }
+            if (notReady > 0)
+            {
+                reason = notReady == 1 ? "Falta 1 piloto por marcar LISTO" : $"Faltan {notReady} pilotos por marcar LISTO";
+                return false;
+            }
+            reason = "¡Todos listos! Toca COMENZAR";
+            return true;
+        }
+
+        /// <summary>El invitado local marca o desmarca "LISTO".</summary>
+        public void RequestSetReady(bool ready)
+        {
+            SetReadyRpc(ready);
+        }
+
+        [Rpc(SendTo.Server)]
+        private void SetReadyRpc(bool ready, RpcParams rpcParams = default)
+        {
+            ulong sender = rpcParams.Receive.SenderClientId;
+            if (!TryGetPlayer(sender, out var slot) || slot.IsConnecting) return;
+            SetStateServer(sender, ready ? PlayerSlot.LISTO : PlayerSlot.CONECTADO);
+        }
+
+        public void SetStateServer(ulong clientId, byte state)
         {
             if (!IsServer) return;
-            if (TryGetPlayer(clientId, out _)) return;
+            for (int i = 0; i < Players.Count; i++)
+            {
+                if (Players[i].ClientId != clientId) continue;
+                var slot = Players[i];
+                if (slot.State == state) return;
+                slot.State = state;
+                Players[i] = slot;
+                return;
+            }
+        }
+
+        public void AddPlayerServer(ulong clientId, string requestedName, byte state = PlayerSlot.CONECTADO)
+        {
+            if (!IsServer) return;
+            if (TryGetPlayer(clientId, out _))
+            {
+                // Ya estaba (p. ej. registrado al aprobar la conexion): solo actualizar el estado.
+                if (state != PlayerSlot.CONECTANDO) SetStateServer(clientId, state);
+                return;
+            }
 
             int slot = FindFreeSlot();
             string name = LocalPlayerSettings.SanitizeName(requestedName);
@@ -125,7 +200,8 @@ namespace TurboGrid
             {
                 ClientId = clientId,
                 Name = new FixedString32Bytes(name),
-                SlotIndex = slot
+                SlotIndex = slot,
+                State = state
             });
         }
 
