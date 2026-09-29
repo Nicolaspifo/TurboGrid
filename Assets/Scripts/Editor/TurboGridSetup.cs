@@ -69,6 +69,7 @@ namespace TurboGrid.EditorTools
                 GenerateSprites();
                 ConfigureTextureQuality();
                 ConfigureLandscapeOnly();
+                ConfigureAppIcon();
 
                 var sessionPrefab = CreateSessionStatePrefab();
                 var powerUpPrefab = CreatePowerUpPrefab();
@@ -557,6 +558,66 @@ namespace TurboGrid.EditorTools
             Stretch(rt);
             rt.gameObject.AddComponent<SafeAreaFitter>();
             return rt;
+        }
+
+        /// <summary>
+        /// Icono de la app (generado con Tools/generar_icono.py a partir del logo):
+        ///  - Icono por defecto (iOS y Android clasico/redondo): icono_app.png.
+        ///  - Android adaptativo: fondo + logo en capas (cada marca recorta la forma).
+        /// </summary>
+        private static void ConfigureAppIcon()
+        {
+            const string dir = "Assets/Recursos/Icono/";
+            var full = PrepareIconTexture(dir + "icono_app.png", false);
+            var back = PrepareIconTexture(dir + "icono_fondo.png", false);
+            var front = PrepareIconTexture(dir + "icono_frente.png", true);
+            if (full == null)
+            {
+                Log.Add("AVISO: falta Assets/Recursos/Icono/icono_app.png (python3 Tools/generar_icono.py).");
+                return;
+            }
+
+            UnityEditor.PlayerSettings.SetIcons(UnityEditor.Build.NamedBuildTarget.Unknown, new[] { full }, IconKind.Any);
+
+            // Android (por reflexion: compila aunque no este instalado el modulo de Android)
+            var kindType = System.Type.GetType("UnityEditor.Android.AndroidPlatformIconKind, UnityEditor.Android.Extensions");
+            if (kindType != null)
+            {
+                var android = UnityEditor.Build.NamedBuildTarget.Android;
+                SetAndroidIcons(kindType, "Adaptive", android, back, front);
+                SetAndroidIcons(kindType, "Round", android, full);
+                SetAndroidIcons(kindType, "Legacy", android, full);
+            }
+            Log.Add("Icono de la app configurado (iOS + Android adaptativo).");
+        }
+
+        private static void SetAndroidIcons(System.Type kindType, string kindName, UnityEditor.Build.NamedBuildTarget target, params Texture2D[] layers)
+        {
+            var prop = kindType.GetProperty(kindName, System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+            if (!(prop?.GetValue(null) is PlatformIconKind kind)) return;
+            var icons = UnityEditor.PlayerSettings.GetPlatformIcons(target, kind);
+            foreach (var icon in icons)
+            {
+                int needed = icon.maxLayerCount;
+                var tex = new Texture2D[needed];
+                for (int i = 0; i < needed; i++) tex[i] = layers[Mathf.Min(i, layers.Length - 1)];
+                icon.SetTextures(tex);
+            }
+            UnityEditor.PlayerSettings.SetPlatformIcons(target, kind, icons);
+        }
+
+        private static Texture2D PrepareIconTexture(string path, bool transparent)
+        {
+            var importer = AssetImporter.GetAtPath(path) as TextureImporter;
+            if (importer == null) return null;
+            importer.textureType = TextureImporterType.Default;
+            importer.mipmapEnabled = false;
+            importer.alphaIsTransparency = transparent;
+            importer.textureCompression = TextureImporterCompression.Uncompressed;
+            importer.maxTextureSize = 1024;
+            importer.npotScale = TextureImporterNPOTScale.None;
+            importer.SaveAndReimport();
+            return AssetDatabase.LoadAssetAtPath<Texture2D>(path);
         }
 
         /// <summary>Solo horizontal (izquierda y derecha), en iOS y Android.</summary>
