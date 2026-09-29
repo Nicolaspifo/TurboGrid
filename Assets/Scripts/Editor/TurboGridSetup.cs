@@ -85,6 +85,7 @@ namespace TurboGrid.EditorTools
 
                 EditorUtility.DisplayProgressBar("TurboGrid", "Pantallas de inicio...", 0.9f);
                 SetupMenuScreens();
+                ConfigureAudioImport();
 
                 UpdateBuildSettings();
                 AssetDatabase.SaveAssets();
@@ -384,6 +385,42 @@ namespace TurboGrid.EditorTools
             Log.Add("Prefabs de autos y gasolina: orden de dibujo y fisica ajustados.");
         }
 
+        /// <summary>
+        /// Musica: Streaming + Vorbis (poca memoria en el celular).
+        /// Efectos: mono, descomprimidos al cargar (se reproducen sin retraso).
+        /// </summary>
+        private static void ConfigureAudioImport()
+        {
+            int count = 0;
+            foreach (var guid in AssetDatabase.FindAssets("t:AudioClip", new[] { "Assets/Resources/Audio" }))
+            {
+                string path = AssetDatabase.GUIDToAssetPath(guid);
+                var importer = AssetImporter.GetAtPath(path) as AudioImporter;
+                if (importer == null) continue;
+
+                bool music = path.Contains("/Musica/");
+                var settings = importer.defaultSampleSettings;
+                if (music)
+                {
+                    settings.loadType = AudioClipLoadType.Streaming;
+                    settings.compressionFormat = AudioCompressionFormat.Vorbis;
+                    settings.quality = 0.7f;
+                    settings.preloadAudioData = false;
+                }
+                else
+                {
+                    settings.loadType = AudioClipLoadType.DecompressOnLoad;
+                    settings.compressionFormat = AudioCompressionFormat.ADPCM;
+                    settings.preloadAudioData = true;
+                }
+                importer.defaultSampleSettings = settings;
+                importer.forceToMono = !music;
+                importer.SaveAndReimport();
+                count++;
+            }
+            if (count > 0) Log.Add($"Audio: {count} sonidos configurados (musica en streaming, efectos en memoria).");
+        }
+
         private static bool SortingLayerExists(string name) => SortingLayer.layers.Any(l => l.name == name);
 
         private static void RegisterNetworkPrefabs(params GameObject[] prefabs)
@@ -544,26 +581,30 @@ namespace TurboGrid.EditorTools
             Stretch(overlay.rectTransform);
             var panel = MakeImage(overlay.transform, "Caja", panelSprite, new Color(0.07f, 0.2f, 0.45f, 0.97f));
             panel.type = Image.Type.Sliced;
-            SetRect(panel.rectTransform, Center, Center, Center, Vector2.zero, new Vector2(520f, 250f));
+            SetRect(panel.rectTransform, Center, Center, Center, Vector2.zero, new Vector2(520f, 300f));
 
             var title = MakeText(panel.transform, "Titulo", "OPCIONES", 28, TextAlignmentOptions.Center, Color.white);
-            SetRect(title.rectTransform, Center, Center, Center, new Vector2(0f, 94f), new Vector2(400f, 40f));
+            SetRect(title.rectTransform, Center, Center, Center, new Vector2(0f, 118f), new Vector2(400f, 40f));
 
             var ctrlLabel = MakeText(panel.transform, "EtiquetaControles", "Controles", 18, TextAlignmentOptions.Right, new Color(1f, 0.8f, 0.3f));
-            SetRect(ctrlLabel.rectTransform, Center, Center, Center, new Vector2(-150f, 40f), new Vector2(150f, 34f));
-            MakeSelector(panel.transform, "SelectorControles", arrow, box, new Vector2(70f, 40f), out var ctrlText, out var ctrlPrev, out var ctrlNext);
+            SetRect(ctrlLabel.rectTransform, Center, Center, Center, new Vector2(-150f, 66f), new Vector2(150f, 34f));
+            MakeSelector(panel.transform, "SelectorControles", arrow, box, new Vector2(70f, 66f), out var ctrlText, out var ctrlPrev, out var ctrlNext);
+
+            var soundLabel = MakeText(panel.transform, "EtiquetaSonido", "Sonido", 18, TextAlignmentOptions.Right, new Color(1f, 0.8f, 0.3f));
+            SetRect(soundLabel.rectTransform, Center, Center, Center, new Vector2(-150f, 16f), new Vector2(150f, 34f));
+            MakeSelector(panel.transform, "SelectorSonido", arrow, box, new Vector2(70f, 16f), out var soundText, out var soundPrev, out var soundNext);
 
             var mapRow = MakeUI(panel.transform, "FilaCircuito");
-            SetRect(mapRow, Center, Center, Center, new Vector2(0f, -12f), new Vector2(500f, 44f));
+            SetRect(mapRow, Center, Center, Center, new Vector2(0f, -34f), new Vector2(500f, 44f));
             var mapLabel = MakeText(mapRow, "EtiquetaCircuito", "Circuito", 18, TextAlignmentOptions.Right, new Color(1f, 0.8f, 0.3f));
             SetRect(mapLabel.rectTransform, Center, Center, Center, new Vector2(-150f, 0f), new Vector2(150f, 34f));
             MakeSelector(mapRow, "SelectorCircuito", arrow, box, new Vector2(70f, 0f), out var mapText, out var mapPrev, out var mapNext);
 
             var hint = MakeText(panel.transform, "Ayuda", "El circuito lo elige quien crea la partida", 12, TextAlignmentOptions.Center, new Color(1f, 1f, 1f, 0.7f));
-            SetRect(hint.rectTransform, Center, Center, Center, new Vector2(0f, -48f), new Vector2(460f, 22f));
+            SetRect(hint.rectTransform, Center, Center, Center, new Vector2(0f, -68f), new Vector2(460f, 22f));
 
             var closeBtn = MakeButton(panel.transform, "BotonListo", LoadSprite(UI + "PANTALLA2/Boton_Listo.png"), "", 16);
-            SetRect((RectTransform)closeBtn.transform, Center, Center, Center, new Vector2(0f, -92f), new Vector2(170f, 49f));
+            SetRect((RectTransform)closeBtn.transform, Center, Center, Center, new Vector2(0f, -112f), new Vector2(170f, 49f));
 
             // ---------------- Conectar al LobbyUI ----------------
             SetRef(lobby, "playerNameInput", nameInput);
@@ -590,6 +631,9 @@ namespace TurboGrid.EditorTools
             SetRef(lobby, "mapText", mapText);
             SetRef(lobby, "mapPrevButton", mapPrev);
             SetRef(lobby, "mapNextButton", mapNext);
+            SetRef(lobby, "soundText", soundText);
+            SetRef(lobby, "soundPrevButton", soundPrev);
+            SetRef(lobby, "soundNextButton", soundNext);
 
             sala.gameObject.SetActive(false);
             overlay.gameObject.SetActive(false);

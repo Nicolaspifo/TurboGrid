@@ -47,6 +47,7 @@ namespace TurboGrid
         private void HandleAvailabilityChanged(bool previous, bool current)
         {
             ApplyVisibility(current, animate: current);
+            if (previous && !current) AudioManager.PlayAt("gasolina", transform.position, 0.85f);
         }
 
         private void ApplyVisibility(bool visible, bool animate)

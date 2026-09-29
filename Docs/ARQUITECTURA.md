@@ -111,3 +111,17 @@ Assets/Scripts/
 - Al guardar, no escribir `/` en el nombre de la carpeta: macOS lo convierte en `:` y eso rompe IL2CPP en iOS.
 - iOS: Bundle ID y Team se configuran en *Player Settings* de Unity, no en Xcode (Xcode se sobrescribe en cada build).
 - iOS y Android deben compilarse desde **el mismo commit** para poder jugar juntos.
+
+## 9. Audio
+
+Todo el audio es **generado por código** (sin archivos de internet, sin derechos de autor).
+
+| Pieza | Qué hace |
+|---|---|
+| `Tools/generar_audio.py` | Sintetiza los efectos y la música en `Assets/Resources/Audio/SFX` y `/Musica`. Se vuelve a generar con `python3 Tools/generar_audio.py` (requiere numpy). |
+| `AudioManager` | Se crea solo al arrancar. Música con fundido cruzado (menú / carrera / jingle de victoria), efectos con paneo según la posición en pantalla, clic en todos los botones, cuenta regresiva, avisos de power-ups, sala (alguien entra / alguien está listo) y opción *Sonido* en Opciones. |
+| `CarAudio` | Motor y derrape **procedurales en tiempo real** por cada auto: el tono sube con la velocidad, simula cambios de marcha, el DRS agrega silbido de turbo y los derrapes suenan al girar fuerte o frenar. |
+
+**Reemplazar un sonido:** poner un archivo con el mismo nombre (`.wav`, `.ogg` o `.mp3`) en la misma carpeta y borrar el generado. Nombres: `gasolina`, `recoger_drs`, `activar_drs`, `recoger_pinchazo`, `lanzar_pinchazo`, `pinchado`, `choque`, `frenazo`, `cuenta_beep`, `cuenta_go`, `boton`, `jugador_listo`, `jugador_entra`, `aplausos`, `musica_menu`, `musica_carrera`, `musica_victoria`.
+
+La música de fondo es un loop perfecto: se genera con un número exacto de compases y la cola de las últimas notas se suma al inicio, así el corte no se nota.

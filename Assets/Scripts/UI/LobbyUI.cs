@@ -56,6 +56,9 @@ namespace TurboGrid
         [SerializeField] private TMP_Text mapText;
         [SerializeField] private Button mapPrevButton;
         [SerializeField] private Button mapNextButton;
+        [SerializeField] private TMP_Text soundText;
+        [SerializeField] private Button soundPrevButton;
+        [SerializeField] private Button soundNextButton;
 
         private enum LobbyStage { Idle, Busy, Hosting, Joined }
         private LobbyStage _stage = LobbyStage.Idle;
@@ -103,6 +106,8 @@ namespace TurboGrid
             if (controlNextButton != null) controlNextButton.onClick.AddListener(() => CycleScheme(1));
             if (mapPrevButton != null) mapPrevButton.onClick.AddListener(() => CycleMap(-1));
             if (mapNextButton != null) mapNextButton.onClick.AddListener(() => CycleMap(1));
+            if (soundPrevButton != null) soundPrevButton.onClick.AddListener(() => CycleSound(-1));
+            if (soundNextButton != null) soundNextButton.onClick.AddListener(() => CycleSound(1));
 
             SetOptionsVisible(false);
             ShowSala(false);
@@ -130,12 +135,14 @@ namespace TurboGrid
         {
             SessionState.OnPlayersChanged += RefreshSala;
             LocalPlayerSettings.OnChanged += RefreshOptionsTexts;
+            AudioManager.OnModeChanged += RefreshOptionsTexts;
         }
 
         private void OnDisable()
         {
             SessionState.OnPlayersChanged -= RefreshSala;
             LocalPlayerSettings.OnChanged -= RefreshOptionsTexts;
+            AudioManager.OnModeChanged -= RefreshOptionsTexts;
         }
 
         // =====================================================================
@@ -446,8 +453,16 @@ namespace TurboGrid
             LocalPlayerSettings.MapIndex = next - 1;
         }
 
+        private void CycleSound(int direction)
+        {
+            int next = (((int)AudioManager.Mode + direction) % 3 + 3) % 3;
+            AudioManager.Mode = (AudioManager.SoundMode)next;
+        }
+
         private void RefreshOptionsTexts()
         {
+            if (soundText != null) soundText.text = AudioManager.ModeDisplayName(AudioManager.Mode);
+
             if (controlSchemeText != null)
                 controlSchemeText.text = LocalPlayerSettings.SchemeDisplayName(LocalPlayerSettings.Scheme);
 

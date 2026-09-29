@@ -50,6 +50,9 @@ namespace TurboGrid
             CreateTrail();
             CreateLabel();
             CreateMinimapMarker();
+
+            // Motor y derrape procedurales.
+            if (GetComponent<CarAudio>() == null) gameObject.AddComponent<CarAudio>();
         }
 
         private void OnDestroy()

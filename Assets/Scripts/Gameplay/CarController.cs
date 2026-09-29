@@ -141,6 +141,17 @@ namespace TurboGrid
             _rb.linearVelocity = newForward * _speed + right * lateral;
         }
 
+        private float _lastCrashSound = -10f;
+
+        private void OnCollisionEnter2D(Collision2D collision)
+        {
+            if (!IsSpawned || !IsOwner) return;
+            float impact = collision.relativeVelocity.magnitude;
+            if (impact < 55f || Time.time - _lastCrashSound < 0.25f) return;
+            _lastCrashSound = Time.time;
+            AudioManager.Play("choque", Mathf.Clamp01(impact / 220f) * 0.9f + 0.1f);
+        }
+
         private void ReadInput(Vector2 forward, out float throttle, out float steer)
         {
             var scheme = LocalPlayerSettings.Scheme;
