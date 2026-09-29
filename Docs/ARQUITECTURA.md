@@ -22,7 +22,7 @@ los objetos originales del equipo **solo se desactivan**, no se borran.
 
 ## 2. Cómo probar rápido (sin compilar para celular)
 
-1. Abre la escena **MainMenu** (siempre se arranca desde ahí).
+1. Abre la escena **MainMenu** para probar la red (la app instalada arranca en *Pantalla Inicio*, pero la red vive en MainMenu).
 2. **Window → Multiplayer → Multiplayer Play Mode**: activa *Player 2* (y 3 y 4 si quieres).
 3. Play. En el editor: **Crear partida** → copia el código. En la ventana de Player 2: pega el código → **Unirse**.
 4. En el editor: **Jugar**.
@@ -44,6 +44,8 @@ El único dato que manda el cliente es la posición de **su propio auto** (`Netw
 ## 4. Flujo de una partida
 
 ```
+Pantalla Inicio (Jugar / Salir) -> Pantalla Instrucciones (Siguiente / Atras)
+        │
 MainMenu (lobby)
   Crear partida / Unirse con código → lista de pilotos (2-4)
   Opciones: nombre, controles (cada uno el suyo), circuito (host: aleatorio o manual)

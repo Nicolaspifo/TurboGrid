@@ -32,6 +32,8 @@ namespace TurboGrid.EditorTools
         private const string GAME = SCENES + "Game.unity";
         private const string CIRCUITO2 = SCENES + "Circuito2.unity";
         private const string CIRCUITO3 = SCENES + "Circuito3.unity";
+        private const string INICIO = SCENES + "Pantalla Inicio.unity";
+        private const string INSTRUCCIONES = SCENES + "Pantalla Intrucciones.unity";
 
         private const string PREFABS = "Assets/Prefab/";
         private const string GENERATED = "Assets/Recursos/Generados/";
@@ -80,6 +82,9 @@ namespace TurboGrid.EditorTools
                 EditorUtility.DisplayProgressBar("TurboGrid", "Circuitos 2 y 3...", 0.75f);
                 CreateExtraCircuit(CIRCUITO2, powerUpPrefab, "Desierto", new Color(1f, 0.86f, 0.62f), new Color(0.93f, 0.78f, 0.5f));
                 CreateExtraCircuit(CIRCUITO3, powerUpPrefab, "Noche", new Color(0.55f, 0.62f, 0.9f), new Color(0.05f, 0.07f, 0.16f));
+
+                EditorUtility.DisplayProgressBar("TurboGrid", "Pantallas de inicio...", 0.9f);
+                SetupMenuScreens();
 
                 UpdateBuildSettings();
                 AssetDatabase.SaveAssets();
@@ -989,9 +994,69 @@ namespace TurboGrid.EditorTools
             });
         }
 
+        // =====================================================================
+        // Pantallas sin red: Inicio -> Instrucciones -> Sala (MainMenu)
+        // =====================================================================
+
+        private static void SetupMenuScreens()
+        {
+            SetupMenuScreen(INICIO, new (string, string, bool)[]
+            {
+                ("Boton Jugar", "Pantalla Intrucciones", false),
+                ("Boton Salir", null, true),
+            });
+            SetupMenuScreen(INSTRUCCIONES, new (string, string, bool)[]
+            {
+                ("Boton Siguiente", "MainMenu", false),
+                ("Boton Atras", "Pantalla Inicio", false),
+            });
+        }
+
+        private static void SetupMenuScreen(string path, (string button, string scene, bool quit)[] links)
+        {
+            if (!File.Exists(path)) return;
+            var scene = EditorSceneManager.OpenScene(path, OpenSceneMode.Single);
+            EnsureEventSystem();
+
+            // Igual que en el lobby: el canvas debe escalar con la pantalla del celular.
+            // Match = 1 (alto) porque los botones estan cerca de los bordes laterales.
+            foreach (var scaler in Object.FindObjectsByType<CanvasScaler>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                if (scaler.uiScaleMode == CanvasScaler.ScaleMode.ConstantPixelSize)
+                {
+                    scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+                    scaler.referenceResolution = new Vector2(800f, 600f);
+                    scaler.matchWidthOrHeight = 1f;
+                }
+            }
+
+            // La imagen guia del diseñador se veia en pantallas anchas: se desactiva.
+            var guide = FindInScene<Transform>("Imagen Guia");
+            if (guide != null) guide.gameObject.SetActive(false);
+
+            foreach (var link in links)
+            {
+                var button = FindInScene<Button>(link.button);
+                if (button == null) continue;
+                var nav = button.GetComponent<SceneButton>();
+                if (nav == null) nav = button.gameObject.AddComponent<SceneButton>();
+                nav.Configure(link.scene, link.quit);
+
+                // "Atras" usa la misma flecha que "Siguiente": se voltea.
+                if (link.button == "Boton Atras")
+                {
+                    var s = button.transform.localScale;
+                    button.transform.localScale = new Vector3(-Mathf.Abs(s.x), s.y, s.z);
+                }
+            }
+
+            SaveScene(scene);
+            Log.Add($"{Path.GetFileNameWithoutExtension(path)}: botones conectados, escala para celular.");
+        }
+
         private static void UpdateBuildSettings()
         {
-            var wanted = new[] { MAIN_MENU, GAME, CIRCUITO2, CIRCUITO3 }.Where(File.Exists).ToList();
+            var wanted = new[] { INICIO, INSTRUCCIONES, MAIN_MENU, GAME, CIRCUITO2, CIRCUITO3 }.Where(File.Exists).ToList();
             var scenes = wanted.Select(p => new EditorBuildSettingsScene(p, true)).ToList();
             // Conservar escenas adicionales que el equipo haya agregado (desactivadas no se tocan).
             foreach (var s in EditorBuildSettings.scenes)
@@ -999,7 +1064,7 @@ namespace TurboGrid.EditorTools
                 if (!wanted.Contains(s.path)) scenes.Add(s);
             }
             EditorBuildSettings.scenes = scenes.ToArray();
-            Log.Add("Build Settings: MainMenu, Game, Circuito2, Circuito3.");
+            Log.Add("Build Settings: Inicio, Instrucciones, MainMenu, Game, Circuito2, Circuito3.");
         }
 
         // =====================================================================
