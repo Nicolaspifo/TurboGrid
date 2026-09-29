@@ -182,7 +182,10 @@ namespace TurboGrid
             if (_carsSpawned) return;
             _carsSpawned = true;
 
+            // Todo lo que se crea en red se crea AHORA, cuando todos ya cargaron el circuito.
             SpawnCarsServer();
+            if (FuelSpawner.Instance != null)
+                FuelSpawner.Instance.SpawnTokensServer();
             if (PowerUpSpawner.Instance != null)
                 PowerUpSpawner.Instance.SpawnInitialServer();
 

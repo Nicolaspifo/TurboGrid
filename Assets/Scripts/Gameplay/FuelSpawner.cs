@@ -30,10 +30,22 @@ namespace TurboGrid
             Instance = this;
         }
 
+        private bool _spawned;
+
         public override void OnNetworkSpawn()
         {
             CollectPoints();
-            if (!IsServer) return;
+            // OJO: NO se crean aqui. En este momento los clientes todavia estan cargando
+            // el circuito; si se crean ahora, a ellos les llegan mientras siguen en el menu
+            // y se destruyen con esa escena (el cliente no ve la gasolina).
+            // RaceManager llama SpawnTokensServer() cuando TODOS terminaron de cargar.
+        }
+
+        /// <summary>Crea las fichas. Solo servidor, una vez, cuando todos cargaron la escena.</summary>
+        public void SpawnTokensServer()
+        {
+            if (!IsServer || _spawned) return;
+            _spawned = true;
             SpawnTokens();
         }
 

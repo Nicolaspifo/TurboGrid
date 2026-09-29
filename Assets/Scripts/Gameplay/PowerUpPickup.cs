@@ -55,7 +55,8 @@ namespace TurboGrid
             Position.OnValueChanged += HandlePositionChanged;
 
             ApplySprite();
-            transform.position = Position.Value;
+            // Si la posicion todavia no llego por red, se usa la del mensaje de spawn.
+            if (Position.Value != Vector2.zero) transform.position = Position.Value;
             ApplyVisibility(IsAvailable.Value, animate: false);
         }
 
