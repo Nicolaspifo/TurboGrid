@@ -108,6 +108,34 @@ namespace TurboGrid.EditorTools
             EditorUtility.DisplayDialog("TurboGrid - Configuracion", summary, "OK");
         }
 
+        [MenuItem("TurboGrid/Probar sonidos (en Play)", priority = 20)]
+        public static void OpenSoundTest()
+        {
+            if (!EditorApplication.isPlaying)
+            {
+                EditorUtility.DisplayDialog("TurboGrid",
+                    "Dale Play primero (en cualquier escena) y luego vuelve a este menu.\n\n" +
+                    "Tambien puedes abrirlo desde el juego: Opciones > Sonido > PROBAR.", "OK");
+                return;
+            }
+            Canvas canvas = null;
+            foreach (var c in Object.FindObjectsByType<Canvas>(FindObjectsSortMode.None))
+                if (c.isRootCanvas && c.renderMode == RenderMode.ScreenSpaceOverlay) { canvas = c; break; }
+            if (canvas == null)
+            {
+                var go = new GameObject("CanvasPruebaSonidos", typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
+                canvas = go.GetComponent<Canvas>();
+                canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+                canvas.sortingOrder = 100;
+                var scaler = go.GetComponent<CanvasScaler>();
+                scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+                scaler.referenceResolution = new Vector2(800f, 600f);
+            }
+            if (Object.FindFirstObjectByType<EventSystem>() == null)
+                new GameObject("EventSystem", typeof(EventSystem), typeof(InputSystemUIInputModule));
+            SoundTestPanel.Open(canvas, AssetDatabase.LoadAssetAtPath<TMP_FontAsset>("Assets/Recursos/Fonts/knewave SDF.asset"));
+        }
+
         // =====================================================================
         // Assets
         // =====================================================================
@@ -581,7 +609,7 @@ namespace TurboGrid.EditorTools
             Stretch(overlay.rectTransform);
             var panel = MakeImage(overlay.transform, "Caja", panelSprite, new Color(0.07f, 0.2f, 0.45f, 0.97f));
             panel.type = Image.Type.Sliced;
-            SetRect(panel.rectTransform, Center, Center, Center, Vector2.zero, new Vector2(520f, 300f));
+            SetRect(panel.rectTransform, Center, Center, Center, Vector2.zero, new Vector2(580f, 300f));
 
             var title = MakeText(panel.transform, "Titulo", "OPCIONES", 28, TextAlignmentOptions.Center, Color.white);
             SetRect(title.rectTransform, Center, Center, Center, new Vector2(0f, 118f), new Vector2(400f, 40f));
@@ -593,6 +621,9 @@ namespace TurboGrid.EditorTools
             var soundLabel = MakeText(panel.transform, "EtiquetaSonido", "Sonido", 18, TextAlignmentOptions.Right, new Color(1f, 0.8f, 0.3f));
             SetRect(soundLabel.rectTransform, Center, Center, Center, new Vector2(-150f, 16f), new Vector2(150f, 34f));
             MakeSelector(panel.transform, "SelectorSonido", arrow, box, new Vector2(70f, 16f), out var soundText, out var soundPrev, out var soundNext);
+            var soundTest = MakeButton(panel.transform, "BotonProbarSonidos", box, "PROBAR", 14);
+            ((Image)soundTest.targetGraphic).color = new Color(1f, 0.75f, 0.3f);
+            SetRect((RectTransform)soundTest.transform, Center, Center, Center, new Vector2(240f, 16f), new Vector2(84f, 34f));
 
             var mapRow = MakeUI(panel.transform, "FilaCircuito");
             SetRect(mapRow, Center, Center, Center, new Vector2(0f, -34f), new Vector2(500f, 44f));
@@ -634,6 +665,7 @@ namespace TurboGrid.EditorTools
             SetRef(lobby, "soundText", soundText);
             SetRef(lobby, "soundPrevButton", soundPrev);
             SetRef(lobby, "soundNextButton", soundNext);
+            SetRef(lobby, "soundTestButton", soundTest);
 
             sala.gameObject.SetActive(false);
             overlay.gameObject.SetActive(false);

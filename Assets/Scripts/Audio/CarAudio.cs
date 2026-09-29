@@ -43,6 +43,29 @@ namespace TurboGrid
         private float _lastBrakeSound = -10f;
         private bool _wasBraking;
 
+        // Modo prueba (panel "Probar sonidos"): el motor suena sin auto.
+        private bool _preview;
+        private float _previewSpeed01, _previewThrottle, _previewSkid;
+        private bool _previewDrs;
+
+        /// <summary>Crea un motor de prueba que no depende de un auto.</summary>
+        public static CarAudio CreatePreview()
+        {
+            var go = new GameObject("PruebaMotor");
+            var audio = go.AddComponent<CarAudio>();
+            audio._preview = true;
+            return audio;
+        }
+
+        /// <summary>Controla el motor de prueba (velocidad 0..1, acelerador 0..1, derrape 0..1).</summary>
+        public void SetPreview(float speed01, float throttle, float skid, bool drs)
+        {
+            _previewSpeed01 = speed01;
+            _previewThrottle = throttle;
+            _previewSkid = skid;
+            _previewDrs = drs;
+        }
+
         private void Awake()
         {
             _data = GetComponent<PlayerNetworkData>();
@@ -83,6 +106,12 @@ namespace TurboGrid
 
         private void Update()
         {
+            if (_preview)
+            {
+                UpdatePreview();
+                return;
+            }
+
             float dt = Mathf.Max(Time.deltaTime, 0.0001f);
 
             // Velocidad y giro (sirve igual para autos propios y remotos).
@@ -154,6 +183,22 @@ namespace TurboGrid
                 _engineSource.panStereo = pan;
                 _skidSource.panStereo = pan;
             }
+        }
+
+        private void UpdatePreview()
+        {
+            float speed01 = _previewSpeed01;
+            float gearPos = Mathf.Clamp(speed01, 0f, 1.2f) * GEARS;
+            int gear = Mathf.Min(GEARS - 1, Mathf.FloorToInt(gearPos));
+            float inGear = Mathf.Clamp01(gearPos - gear);
+            float freq = 42f + gear * 14f + inGear * 58f;
+            if (_previewDrs) freq *= 1.18f;
+            _engineFreq = freq;
+
+            bool on = AudioManager.SfxEnabled;
+            _engineGain = on ? 0.32f * (0.55f + 0.45f * Mathf.Max(_previewThrottle, speed01 * 0.6f)) : 0f;
+            _turboGain = on && _previewDrs ? 0.12f : 0f;
+            _skidGain = on ? _previewSkid * 0.28f : 0f;
         }
 
         private static float DistanceFactor(Vector3 pos, float maxDistance)

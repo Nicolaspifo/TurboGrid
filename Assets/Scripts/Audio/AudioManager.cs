@@ -157,6 +157,37 @@ namespace TurboGrid
             EnsureExists().PlayMusicInternal(musicName, loop, fade, next);
         }
 
+        /// <summary>Detiene la musica con un fundido.</summary>
+        public static void StopMusic(float fade = 0.5f)
+        {
+            var m = EnsureExists();
+            if (m._musicRoutine != null) m.StopCoroutine(m._musicRoutine);
+            m._musicRoutine = m.StartCoroutine(m.FadeOutMusic(fade));
+        }
+
+        private IEnumerator FadeOutMusic(float fade)
+        {
+            var src = _currentMusic;
+            _currentMusicName = null;
+            if (src == null) yield break;
+            float start = src.volume;
+            for (float t = 0f; t < fade; t += Time.unscaledDeltaTime)
+            {
+                src.volume = Mathf.Lerp(start, 0f, t / fade);
+                yield return null;
+            }
+            src.Stop();
+        }
+
+        /// <summary>Nombres de todos los efectos y musicas del juego (para el panel de prueba).</summary>
+        public static readonly string[] AllSfx =
+        {
+            "gasolina", "recoger_drs", "activar_drs", "recoger_pinchazo", "lanzar_pinchazo", "pinchado",
+            "choque", "frenazo", "cuenta_beep", "cuenta_go", "boton", "jugador_listo", "jugador_entra", "aplausos"
+        };
+
+        public static readonly string[] AllMusic = { "musica_menu", "musica_carrera", "musica_victoria" };
+
         public static AudioClip GetClip(string clipName)
         {
             return EnsureExists().Load(clipName);

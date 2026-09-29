@@ -59,6 +59,7 @@ namespace TurboGrid
         [SerializeField] private TMP_Text soundText;
         [SerializeField] private Button soundPrevButton;
         [SerializeField] private Button soundNextButton;
+        [SerializeField] private Button soundTestButton;       // abre el panel "Probar sonidos"
 
         private enum LobbyStage { Idle, Busy, Hosting, Joined }
         private LobbyStage _stage = LobbyStage.Idle;
@@ -108,6 +109,7 @@ namespace TurboGrid
             if (mapNextButton != null) mapNextButton.onClick.AddListener(() => CycleMap(1));
             if (soundPrevButton != null) soundPrevButton.onClick.AddListener(() => CycleSound(-1));
             if (soundNextButton != null) soundNextButton.onClick.AddListener(() => CycleSound(1));
+            if (soundTestButton != null) soundTestButton.onClick.AddListener(OpenSoundTest);
 
             SetOptionsVisible(false);
             ShowSala(false);
@@ -451,6 +453,15 @@ namespace TurboGrid
             int current = LocalPlayerSettings.MapIndex + 1;
             int next = ((current + direction) % total + total) % total;
             LocalPlayerSettings.MapIndex = next - 1;
+        }
+
+        private void OpenSoundTest()
+        {
+            var canvas = GetComponentInParent<Canvas>();
+            if (canvas == null && optionsPanel != null) canvas = optionsPanel.GetComponentInParent<Canvas>();
+            if (canvas != null) canvas = canvas.rootCanvas;
+            var font = controlSchemeText != null ? controlSchemeText.font : null;
+            SoundTestPanel.Open(canvas, font);
         }
 
         private void CycleSound(int direction)
