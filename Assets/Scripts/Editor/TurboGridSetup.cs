@@ -313,6 +313,7 @@ namespace TurboGrid.EditorTools
             var sr = root.GetComponent<SpriteRenderer>();
             if (sr == null) sr = root.AddComponent<SpriteRenderer>();
             sr.sprite = drs;
+            if (SortingLayerExists("FuelTokens")) sr.sortingLayerName = "FuelTokens";
             sr.sortingOrder = 6;
             if (root.GetComponent<NetworkObject>() == null) root.AddComponent<NetworkObject>();
             var pickup = root.GetComponent<PowerUpPickup>();
@@ -347,7 +348,12 @@ namespace TurboGrid.EditorTools
                 if (!File.Exists(path)) continue;
                 var root = PrefabUtility.LoadPrefabContents(path);
                 var sr = root.GetComponent<SpriteRenderer>();
-                if (sr != null) sr.sortingOrder = 10;
+                if (sr != null)
+                {
+                    // Todos los autos en la capa "Cars" (si alguno queda en "Default" se dibuja debajo de la pista).
+                    if (SortingLayerExists("Cars")) sr.sortingLayerName = "Cars";
+                    sr.sortingOrder = 10;
+                }
                 var rb = root.GetComponent<Rigidbody2D>();
                 if (rb != null)
                 {
@@ -367,12 +373,18 @@ namespace TurboGrid.EditorTools
             {
                 var root = PrefabUtility.LoadPrefabContents(fuelPath);
                 var sr = root.GetComponent<SpriteRenderer>();
-                if (sr != null) sr.sortingOrder = 5;
+                if (sr != null)
+                {
+                    if (SortingLayerExists("FuelTokens")) sr.sortingLayerName = "FuelTokens";
+                    sr.sortingOrder = 5;
+                }
                 PrefabUtility.SaveAsPrefabAsset(root, fuelPath);
                 PrefabUtility.UnloadPrefabContents(root);
             }
             Log.Add("Prefabs de autos y gasolina: orden de dibujo y fisica ajustados.");
         }
+
+        private static bool SortingLayerExists(string name) => SortingLayer.layers.Any(l => l.name == name);
 
         private static void RegisterNetworkPrefabs(params GameObject[] prefabs)
         {
@@ -1050,8 +1062,109 @@ namespace TurboGrid.EditorTools
                 }
             }
 
+            if (path == INSTRUCCIONES) BuildInstructions();
+
             SaveScene(scene);
             Log.Add($"{Path.GetFileNameWithoutExtension(path)}: botones conectados, escala para celular.");
+        }
+
+        /// <summary>
+        /// Pantalla de instrucciones animada: 5 tarjetas con las reglas actuales del juego
+        /// (la imagen original del diseñador hablaba solo de joystick y "fichas").
+        /// </summary>
+        private static void BuildInstructions()
+        {
+            var canvas = Object.FindFirstObjectByType<Canvas>(FindObjectsInactive.Include);
+            if (canvas == null) return;
+            Transform root = canvas.transform;
+            RemoveGenerated(root);
+
+            // La imagen con las 4 tarjetas fijas se reemplaza por tarjetas animadas.
+            var oldCards = root.Find("Elemento_1");
+            if (oldCards != null) oldCards.gameObject.SetActive(false);
+
+            // Banderas del diseñador (arriba): se reutilizan y animan.
+            var flags = root.Find("Elemento_2") as RectTransform;
+            if (flags != null)
+            {
+                var img = flags.GetComponent<Image>();
+                if (img != null) img.preserveAspect = true;
+                flags.localScale = Vector3.one;
+                SetRect(flags, Center, Center, Center, new Vector2(0f, 190f), new Vector2(300f, 170f));
+            }
+
+            Sprite box = S("PANTALLA4/Elemento_Espacio.png");
+            Sprite panel = LoadSprite(GENERATED + "Panel.png");
+            string iconos = "Assets/Recursos/Prototipo/Iconos.png";
+
+            var content = MakeUI(root, PREFIX + "Instrucciones");
+            Stretch(content);
+
+            var titleBox = MakeImage(content, "Titulo", box, Color.white);
+            SetRect(titleBox.rectTransform, Center, Center, Center, new Vector2(0f, 72f), new Vector2(330f, 64f));
+            var titleText = MakeText(titleBox.transform, "Texto", "INSTRUCCIONES", 34, TextAlignmentOptions.Center, Color.white);
+            Stretch(titleText.rectTransform);
+
+            var cardsData = new (string title, string body, Sprite icon)[]
+            {
+                ("MANEJA", "Flechas, timón o joystick: elígelo en Opciones", LoadSprite(iconos, "Iconos_1")),
+                ("GASOLINA", "Cada bidón suma 20 pts y reaparece a los 10 s", LoadSprite(iconos, "Iconos_0")),
+                ("DRS", "Recógelo en la pista y úsalo: +velocidad por 3 s", LoadSprite(iconos, "Iconos_2")),
+                ("PINCHAZO", "Deja quieto 2 s a un rival al azar", LoadSprite(iconos, "Iconos_4")),
+                ("¡GANA!", "Llega a 1000 pts o ten más puntos al acabar los 3:00", S("PANTALLA6/Elemento_1.png")),
+            };
+
+            var cards = new RectTransform[cardsData.Length];
+            var icons = new RectTransform[cardsData.Length];
+            const float cardW = 146f, cardH = 215f, spacing = 156f;
+            for (int i = 0; i < cardsData.Length; i++)
+            {
+                float x = (i - (cardsData.Length - 1) / 2f) * spacing;
+                var card = MakeImage(content, "Tarjeta" + (i + 1), panel, new Color(0.07f, 0.22f, 0.5f, 0.96f));
+                card.type = Image.Type.Sliced;
+                SetRect(card.rectTransform, Center, Center, Center, new Vector2(x, -120f), new Vector2(cardW, cardH));
+                var outline = card.gameObject.AddComponent<Outline>();
+                outline.effectColor = new Color(0.03f, 0.05f, 0.12f, 1f);
+                outline.effectDistance = new Vector2(3f, -3f);
+                cards[i] = card.rectTransform;
+
+                var icon = MakeImage(card.transform, "Icono", cardsData[i].icon, Color.white);
+                icon.preserveAspect = true;
+                icon.raycastTarget = false;
+                SetRect(icon.rectTransform, Top, Top, Center, new Vector2(0f, -48f), new Vector2(76f, 70f));
+                icons[i] = icon.rectTransform;
+
+                var chip = MakeImage(card.transform, "Etiqueta", box, Color.white);
+                chip.raycastTarget = false;
+                SetRect(chip.rectTransform, Center, Center, Center, new Vector2(0f, 4f), new Vector2(128f, 32f));
+                var chipText = MakeText(chip.transform, "Texto", cardsData[i].title, 15, TextAlignmentOptions.Center, new Color(1f, 0.82f, 0.3f));
+                Stretch(chipText.rectTransform);
+
+                var body = MakeText(card.transform, "Descripcion", cardsData[i].body, 12, TextAlignmentOptions.Top, Color.white);
+                SetRect(body.rectTransform, Bottom, Bottom, Bottom, new Vector2(0f, 10f), new Vector2(cardW - 16f, 82f));
+                body.textWrappingMode = TextWrappingModes.Normal;
+                body.enableAutoSizing = true;
+                body.fontSizeMin = 8;
+                body.fontSizeMax = 12;
+            }
+
+            // Flechas: ancladas a las esquinas inferiores para que se vean en cualquier pantalla.
+            var next = FindInScene<RectTransform>("Boton Siguiente");
+            var back = FindInScene<RectTransform>("Boton Atras");
+            if (next != null)
+            {
+                SetRect(next, BottomRight, BottomRight, Center, new Vector2(-58f, 52f), new Vector2(76f, 72f));
+                next.SetAsLastSibling();
+            }
+            if (back != null)
+            {
+                SetRect(back, BottomLeft, BottomLeft, Center, new Vector2(58f, 52f), new Vector2(76f, 72f));
+                back.localScale = new Vector3(-1f, 1f, 1f);
+                back.SetAsLastSibling();
+            }
+
+            var animator = content.gameObject.AddComponent<InstructionsAnimator>();
+            animator.Configure(flags, titleBox.rectTransform, cards, icons, next, back);
         }
 
         private static void UpdateBuildSettings()

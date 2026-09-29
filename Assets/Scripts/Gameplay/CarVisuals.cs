@@ -15,6 +15,9 @@ namespace TurboGrid
     {
         public const string MINIMAP_LAYER = "Minimapa";
         public const int LABEL_LAYER = 2; // Ignore Raycast
+        public const string CARS_SORTING_LAYER = "Cars";
+
+        private int _sortingLayerId;
 
         private PlayerNetworkData _data;
         private SpriteRenderer _body;
@@ -35,8 +38,14 @@ namespace TurboGrid
             if (_body == null) _body = GetComponentInChildren<SpriteRenderer>();
             if (_body != null) _bodyBaseColor = _body.color;
 
+            // Los autos deben dibujarse en la capa "Cars" (encima de "Track"). Si un prefab
+            // quedo en "Default" se dibuja DEBAJO de la pista y el auto se vuelve invisible.
+            int carsLayer = SortingLayer.NameToID(CARS_SORTING_LAYER);
+            if (_body != null && SortingLayer.IsValid(carsLayer)) _body.sortingLayerID = carsLayer;
+            _sortingLayerId = _body != null ? _body.sortingLayerID : 0;
+
             // Tamaño aproximado del auto en unidades de mundo para ubicar la etiqueta.
-            if (_body != null) _labelOffset = Mathf.Max(40f, _body.bounds.extents.magnitude + 20f);
+            if (_body != null) _labelOffset = Mathf.Max(30f, _body.bounds.extents.magnitude + 5f);
 
             CreateTrail();
             CreateLabel();
@@ -56,6 +65,7 @@ namespace TurboGrid
             _trail.endWidth = 0f;
             _trail.minVertexDistance = 4f;
             _trail.emitting = false;
+            _trail.sortingLayerID = _sortingLayerId;
             _trail.sortingOrder = (_body != null ? _body.sortingOrder : 0) - 1;
             // Se usa el mismo material del sprite del auto (siempre incluido en el build).
             // Shader.Find("Sprites/Default") puede devolver null en celular si el shader no se incluyo.
@@ -82,12 +92,14 @@ namespace TurboGrid
             _labelRoot = go.transform;
             _label = go.AddComponent<TextMeshPro>();
             _label.fontSize = 240f; // en texto 3D, ~10 puntos = 1 unidad de mundo
-            _label.alignment = TextAlignmentOptions.Center;
+            _label.alignment = TextAlignmentOptions.Bottom; // las etiquetas extra crecen hacia arriba
             _label.textWrappingMode = TextWrappingModes.NoWrap;
-            _label.rectTransform.sizeDelta = new Vector2(900f, 120f);
+            _label.rectTransform.sizeDelta = new Vector2(900f, 200f);
+            _label.rectTransform.pivot = new Vector2(0.5f, 0f);
             _label.fontStyle = FontStyles.Bold;
             _label.outlineWidth = 0.25f;
             _label.outlineColor = new Color32(0, 0, 0, 200);
+            _label.sortingLayerID = _sortingLayerId;
             _label.sortingOrder = 50;
             _label.text = string.Empty;
         }
@@ -105,6 +117,7 @@ namespace TurboGrid
             go.transform.localScale = Vector3.one * (70f / parentScale);
             _minimapMarker = go.AddComponent<SpriteRenderer>();
             _minimapMarker.sprite = GetCircleSprite();
+            _minimapMarker.sortingLayerID = _sortingLayerId;
             _minimapMarker.sortingOrder = 100;
         }
 
@@ -119,7 +132,7 @@ namespace TurboGrid
             {
                 _labelRoot.position = transform.position + Vector3.up * _labelOffset;
                 _labelRoot.rotation = Quaternion.identity;
-                string text = _data.IsOwner ? $"{_data.DisplayName} (tu)" : _data.DisplayName;
+                string text = BuildLabel();
                 if (_label.text != text) _label.text = text;
                 _label.color = playerColor;
             }
@@ -153,6 +166,55 @@ namespace TurboGrid
                     _body.color = _bodyBaseColor;
                 }
             }
+        }
+
+        /// <summary>
+        /// Nombre del piloto + estado de sus power-ups, para que TODOS vean quien
+        /// tiene DRS o Pinchazo guardado y quien esta usando el DRS.
+        /// </summary>
+        private string BuildLabel()
+        {
+            string name = _data.IsOwner ? $"{_data.DisplayName} (tu)" : _data.DisplayName;
+            string tags = string.Empty;
+
+            // Fin de carrera: corona al ganador.
+            var race = RaceManager.Instance;
+            if (race != null && race.IsFinished && race.LastResults != null && race.LastResults.Count > 0)
+            {
+                var results = race.LastResults;
+                bool tie = results.Count > 1 && results[0].Points == results[1].Points;
+                if (!tie && results[0].ClientId == _data.OwnerClientId)
+                {
+                    bool on = Mathf.Repeat(Time.time * 3f, 1f) > 0.3f;
+                    return $"<size=120%><color=#{(on ? "FFD54F" : "FFFFFF")}>¡GANADOR!</color></size>\n{name}";
+                }
+                return name;
+            }
+
+            if (_data.IsDrsActive.Value)
+            {
+                // Parpadea mientras dura el DRS.
+                bool on = Mathf.Repeat(Time.time * 6f, 1f) > 0.35f;
+                tags += on ? "<color=#4FC3F7>¡DRS ACTIVO!</color>" : "<color=#FFFFFF>¡DRS ACTIVO!</color>";
+            }
+            else if (_data.HasDrs.Value)
+            {
+                tags += "<color=#4FC3F7>[DRS]</color>";
+            }
+
+            if (_data.HasPinchazo.Value)
+            {
+                if (tags.Length > 0) tags += " ";
+                tags += "<color=#C77DFF>[PINCHAZO]</color>";
+            }
+
+            if (_data.IsStunned.Value && (RaceManager.Instance == null || !RaceManager.Instance.IsFinished))
+            {
+                if (tags.Length > 0) tags += " ";
+                tags += "<color=#FF6B6B>¡PINCHADO!</color>";
+            }
+
+            return tags.Length > 0 ? $"<size=75%>{tags}</size>\n{name}" : name;
         }
 
         public static Sprite GetCircleSprite()

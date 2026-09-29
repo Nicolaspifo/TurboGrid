@@ -16,6 +16,16 @@ namespace TurboGrid
         [SerializeField] private float maxExtraZoom = 50f;
         [SerializeField] private float lookAhead = 0.35f; // segundos de adelanto segun la velocidad
 
+        // Al terminar la carrera la camara puede enfocar al ganador (todos los clientes).
+        private static ulong? _focusClientId;
+        [SerializeField] private float celebrationOrthoSize = 150f;
+
+        /// <summary>Enfoca el auto de ese jugador (null = volver al auto propio).</summary>
+        public static void FocusOn(ulong? clientId)
+        {
+            _focusClientId = clientId;
+        }
+
         private Camera _camera;
         private Vector3 _velocity;
         private float _zoomVelocity;
@@ -25,6 +35,7 @@ namespace TurboGrid
         private void Awake()
         {
             _camera = GetComponent<Camera>();
+            _focusClientId = null; // escena nueva: sin enfoque pendiente
             _overviewSize = _camera.orthographicSize;
             _overviewPosition = transform.position;
 
@@ -35,6 +46,22 @@ namespace TurboGrid
 
         private void LateUpdate()
         {
+            // Celebracion: zoom al ganador.
+            if (_focusClientId.HasValue)
+            {
+                PlayerNetworkData winner = null;
+                foreach (var p in PlayerNetworkData.All)
+                    if (p != null && p.IsSpawned && p.OwnerClientId == _focusClientId.Value) { winner = p; break; }
+                if (winner != null)
+                {
+                    Vector3 focus = winner.transform.position;
+                    focus.z = transform.position.z;
+                    transform.position = Vector3.SmoothDamp(transform.position, focus, ref _velocity, 0.35f);
+                    _camera.orthographicSize = Mathf.SmoothDamp(_camera.orthographicSize, celebrationOrthoSize, ref _zoomVelocity, 0.45f);
+                    return;
+                }
+            }
+
             var local = PlayerNetworkData.Local;
             if (local == null)
             {

@@ -60,6 +60,17 @@ namespace TurboGrid
         /// <summary>Solo en clientes: aviso para mostrar "¡Pinchazo a X!" en el HUD.</summary>
         public static event Action<string, string> OnPinchazoFeed; // (atacante, victima)
 
+        /// <summary>Tipos de aviso de power-up que ven todos los jugadores.</summary>
+        public enum PowerUpFeed : byte
+        {
+            RecogioDrs = 0,
+            RecogioPinchazo = 1,
+            ActivoDrs = 2
+        }
+
+        /// <summary>En todos los clientes: (tipo de aviso, clientId del piloto, nombre del piloto).</summary>
+        public static event Action<PowerUpFeed, ulong, string> OnPowerUpFeed;
+
         public CarController Car { get; private set; }
         public Color PlayerColor => PlayerColors.Get(SlotIndex.Value);
         public string DisplayName => PlayerName.Value.IsEmpty ? $"Piloto {OwnerClientId + 1}" : PlayerName.Value.ToString();
@@ -157,11 +168,13 @@ namespace TurboGrid
             {
                 if (HasDrs.Value) return false;
                 HasDrs.Value = true;
+                AnnouncePowerUpRpc(PowerUpFeed.RecogioDrs, DisplayName);
             }
             else
             {
                 if (HasPinchazo.Value) return false;
                 HasPinchazo.Value = true;
+                AnnouncePowerUpRpc(PowerUpFeed.RecogioPinchazo, DisplayName);
             }
             return true;
         }
@@ -208,6 +221,7 @@ namespace TurboGrid
                 HasDrs.Value = false;
                 IsDrsActive.Value = true;
                 DrsEndTime.Value = NetworkManager.ServerTime.Time + GameConstants.DRS_DURATION;
+                AnnouncePowerUpRpc(PowerUpFeed.ActivoDrs, DisplayName);
             }
             else
             {
@@ -238,6 +252,12 @@ namespace TurboGrid
                         rivals.Add(p);
             }
             return rivals.Count == 0 ? null : rivals[UnityEngine.Random.Range(0, rivals.Count)];
+        }
+
+        [Rpc(SendTo.ClientsAndHost)]
+        private void AnnouncePowerUpRpc(PowerUpFeed feed, FixedString32Bytes playerName)
+        {
+            OnPowerUpFeed?.Invoke(feed, OwnerClientId, playerName.ToString());
         }
 
         [Rpc(SendTo.ClientsAndHost)]

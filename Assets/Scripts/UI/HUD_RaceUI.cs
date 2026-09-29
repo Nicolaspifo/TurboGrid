@@ -37,11 +37,13 @@ namespace TurboGrid
 
         private readonly List<PlayerNetworkData> _sorted = new List<PlayerNetworkData>();
         private readonly StringBuilder _sb = new StringBuilder();
-        private float _feedHideAt;
+
+        // Avisos apilados (maximo 3 a la vez, el mas nuevo abajo).
+        private const int MAX_FEED_LINES = 3;
+        private readonly List<(string text, float hideAt)> _feed = new List<(string, float)>();
+        private bool _feedDirty;
         private float _goHideAt;
         private int _lastShownSecond = -1;
-        private bool _lastHadDrs;
-        private bool _lastHadPinchazo;
         private bool _lastStunned;
 
         public void Configure(TMP_Text points, Image progress, TMP_Text position, TMP_Text timer,
@@ -61,6 +63,15 @@ namespace TurboGrid
         {
             Instance = this;
             if (feedText != null) feedText.text = string.Empty;
+
+            // La tabla ahora muestra etiquetas de power-ups: que el texto se achique si no cabe.
+            if (leaderboardText != null && !leaderboardText.enableAutoSizing)
+            {
+                float max = leaderboardText.fontSize;
+                leaderboardText.enableAutoSizing = true;
+                leaderboardText.fontSizeMax = max;
+                leaderboardText.fontSizeMin = Mathf.Max(12f, max * 0.55f);
+            }
         }
 
         private void OnDestroy()
@@ -71,11 +82,37 @@ namespace TurboGrid
         private void OnEnable()
         {
             PlayerNetworkData.OnPinchazoFeed += HandlePinchazoFeed;
+            PlayerNetworkData.OnPowerUpFeed += HandlePowerUpFeed;
         }
 
         private void OnDisable()
         {
             PlayerNetworkData.OnPinchazoFeed -= HandlePinchazoFeed;
+            PlayerNetworkData.OnPowerUpFeed -= HandlePowerUpFeed;
+        }
+
+        private void HandlePowerUpFeed(PlayerNetworkData.PowerUpFeed feed, ulong clientId, string playerName)
+        {
+            bool isMe = Unity.Netcode.NetworkManager.Singleton != null &&
+                        Unity.Netcode.NetworkManager.Singleton.LocalClientId == clientId;
+            switch (feed)
+            {
+                case PlayerNetworkData.PowerUpFeed.RecogioDrs:
+                    ShowFeed(isMe
+                        ? "<color=#4FC3F7>¡Recogiste DRS! Toca el boton azul</color>"
+                        : $"<color=#4FC3F7>{playerName} tiene DRS</color>", 2.5f);
+                    break;
+                case PlayerNetworkData.PowerUpFeed.RecogioPinchazo:
+                    ShowFeed(isMe
+                        ? "<color=#C77DFF>¡Recogiste Pinchazo! Toca el boton morado</color>"
+                        : $"<color=#C77DFF>¡Cuidado! {playerName} tiene PINCHAZO</color>", 3f);
+                    break;
+                case PlayerNetworkData.PowerUpFeed.ActivoDrs:
+                    ShowFeed(isMe
+                        ? "<color=#4FC3F7>¡DRS ACTIVADO!</color>"
+                        : $"<color=#4FC3F7>¡{playerName} activo el DRS!</color>", 2.5f);
+                    break;
+            }
         }
 
         private void HandlePinchazoFeed(string attacker, string victim)
@@ -92,8 +129,32 @@ namespace TurboGrid
         public void ShowFeed(string message, float seconds)
         {
             if (feedText == null) return;
-            feedText.text = message;
-            _feedHideAt = Time.time + seconds;
+            _feed.Add((message, Time.time + seconds));
+            while (_feed.Count > MAX_FEED_LINES) _feed.RemoveAt(0);
+            _feedDirty = true;
+        }
+
+        private void UpdateFeed()
+        {
+            if (feedText == null) return;
+            for (int i = _feed.Count - 1; i >= 0; i--)
+            {
+                if (Time.time > _feed[i].hideAt)
+                {
+                    _feed.RemoveAt(i);
+                    _feedDirty = true;
+                }
+            }
+            if (!_feedDirty) return;
+            _feedDirty = false;
+
+            _sb.Clear();
+            for (int i = 0; i < _feed.Count; i++)
+            {
+                if (i > 0) _sb.Append('\n');
+                _sb.Append(_feed[i].text);
+            }
+            feedText.text = _sb.ToString();
         }
 
         private void Update()
@@ -105,13 +166,8 @@ namespace TurboGrid
             UpdateCountdown(race);
             UpdateOwnScore(local);
             UpdateLeaderboard(local);
-            UpdatePowerUpFeed(local);
-
-            if (feedText != null && _feedHideAt > 0f && Time.time > _feedHideAt)
-            {
-                feedText.text = string.Empty;
-                _feedHideAt = 0f;
-            }
+            UpdateStunFeed(local);
+            UpdateFeed();
         }
 
         private void UpdateTimer(RaceManager race)
@@ -203,26 +259,20 @@ namespace TurboGrid
                 string name = p.DisplayName;
                 if (p == local) name = $"<b>{name}</b>";
                 _sb.Append($"{i + 1}. <color=#{hex}>{name}</color>  {p.Points.Value}");
+                // Que todos vean quien tiene power-ups guardados o activos.
+                if (p.IsDrsActive.Value) _sb.Append("  <color=#4FC3F7><size=80%>DRS!</size></color>");
+                else if (p.HasDrs.Value) _sb.Append("  <color=#4FC3F7><size=80%>[DRS]</size></color>");
+                if (p.HasPinchazo.Value) _sb.Append("  <color=#C77DFF><size=80%>[PINCH]</size></color>");
                 if (i < _sorted.Count - 1) _sb.Append('\n');
             }
             leaderboardText.text = _sb.ToString();
         }
 
-        private void UpdatePowerUpFeed(PlayerNetworkData local)
+        private void UpdateStunFeed(PlayerNetworkData local)
         {
             if (local == null) return;
-
-            if (local.HasDrs.Value && !_lastHadDrs)
-                ShowFeed("<color=#4FC3F7>¡Recogiste DRS! Toca el boton azul</color>", 2f);
-            if (local.HasPinchazo.Value && !_lastHadPinchazo)
-                ShowFeed("<color=#C77DFF>¡Recogiste Pinchazo! Toca el boton morado</color>", 2f);
-
             bool stunned = local.IsStunned.Value && (RaceManager.Instance == null || !RaceManager.Instance.IsFinished);
-            if (stunned && !_lastStunned && _feedHideAt < Time.time)
-                ShowFeed("<color=#C77DFF>¡Llanta pinchada!</color>", 2f);
-
-            _lastHadDrs = local.HasDrs.Value;
-            _lastHadPinchazo = local.HasPinchazo.Value;
+            // El aviso "X te pincho" llega por OnPinchazoFeed; aqui solo se limpia el estado.
             _lastStunned = stunned;
         }
     }

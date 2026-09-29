@@ -42,8 +42,6 @@ namespace TurboGrid
         [SerializeField] private Button mapPrevButton;
         [SerializeField] private Button mapNextButton;
 
-        [Tooltip("Obsoleto: el circuito ahora se elige en Opciones (MapCatalog).")]
-        [SerializeField, HideInInspector] private string raceSceneName = "Game";
 
         private enum LobbyStage { Idle, Busy, Hosting, Joined }
         private LobbyStage _stage = LobbyStage.Idle;

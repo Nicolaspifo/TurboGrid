@@ -41,6 +41,10 @@ namespace TurboGrid
         private void Awake()
         {
             if (spriteRenderer == null) spriteRenderer = GetComponentInChildren<SpriteRenderer>();
+
+            // Misma capa de dibujo que la gasolina (encima de la pista, debajo de los autos).
+            int layer = SortingLayer.NameToID("FuelTokens");
+            if (spriteRenderer != null && SortingLayer.IsValid(layer)) spriteRenderer.sortingLayerID = layer;
             _baseScale = transform.localScale;
         }
 
