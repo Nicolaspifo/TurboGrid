@@ -67,6 +67,8 @@ namespace TurboGrid.EditorTools
                 EnsureLayer(CarVisuals.MINIMAP_LAYER);
                 _font = LoadFont();
                 GenerateSprites();
+                ConfigureTextureQuality();
+                ConfigureLandscapeOnly();
 
                 var sessionPrefab = CreateSessionStatePrefab();
                 var powerUpPrefab = CreatePowerUpPrefab();
@@ -335,8 +337,11 @@ namespace TurboGrid.EditorTools
         {
             string path = PREFABS + "PowerUp.prefab";
             var existing = AssetDatabase.LoadAssetAtPath<GameObject>(path);
-            Sprite drs = LoadSprite("Assets/Recursos/Prototipo/Iconos.png", "Iconos_2");
-            Sprite pinchazo = LoadSprite("Assets/Recursos/Prototipo/Iconos.png", "Iconos_4");
+            // Iconos HD del diseñador (los del prototipo eran borrosos y tenian fondo blanco).
+            Sprite drs = S("PANTALLA JUGABILIDAD/Boton_velocidad.png");
+            Sprite pinchazo = S("PANTALLA JUGABILIDAD/Boton_poder.png");
+            if (drs == null) drs = LoadSprite("Assets/Recursos/Prototipo/Iconos.png", "Iconos_2");
+            if (pinchazo == null) pinchazo = LoadSprite("Assets/Recursos/Prototipo/Iconos.png", "Iconos_4");
 
             GameObject root = existing != null ? PrefabUtility.LoadPrefabContents(path) : new GameObject("PowerUp");
             var sr = root.GetComponent<SpriteRenderer>();
@@ -347,8 +352,8 @@ namespace TurboGrid.EditorTools
             if (root.GetComponent<NetworkObject>() == null) root.AddComponent<NetworkObject>();
             var pickup = root.GetComponent<PowerUpPickup>();
             if (pickup == null) pickup = root.AddComponent<PowerUpPickup>();
-            // Los iconos miden ~2 unidades: escala 24 = ~50 unidades de mundo (el auto mide ~56).
-            root.transform.localScale = Vector3.one * 24f;
+            // Tamaño en el mundo: ~55 unidades (el auto mide ~56).
+            root.transform.localScale = Vector3.one * WorldScaleFor(drs, 55f);
             SetRef(pickup, "spriteRenderer", sr);
             SetRef(pickup, "drsSprite", drs);
             SetRef(pickup, "pinchazoSprite", pinchazo);
@@ -406,6 +411,14 @@ namespace TurboGrid.EditorTools
                 {
                     if (SortingLayerExists("FuelTokens")) sr.sortingLayerName = "FuelTokens";
                     sr.sortingOrder = 5;
+                    var hd = S("PANTALLA JUGABILIDAD/Item_gasolina.png");
+                    if (hd != null)
+                    {
+                        sr.sprite = hd;
+                        root.transform.localScale = Vector3.one * WorldScaleFor(hd, 36f);
+                        var circle = root.GetComponent<CircleCollider2D>();
+                        if (circle != null) circle.radius = hd.bounds.extents.x;
+                    }
                 }
                 PrefabUtility.SaveAsPrefabAsset(root, fuelPath);
                 PrefabUtility.UnloadPrefabContents(root);
@@ -447,6 +460,115 @@ namespace TurboGrid.EditorTools
                 count++;
             }
             if (count > 0) Log.Add($"Audio: {count} sonidos configurados (musica en streaming, efectos en memoria).");
+        }
+
+        /// <summary>Escala para que un sprite mida "worldWidth" unidades de ancho.</summary>
+        private static float WorldScaleFor(Sprite sprite, float worldWidth)
+        {
+            if (sprite == null || sprite.bounds.size.x <= 0f) return 1f;
+            return worldWidth / sprite.bounds.size.x;
+        }
+
+        /// <summary>
+        /// Todas las imagenes del juego en alta calidad: compresion "High Quality" (ASTC en
+        /// celular), sin mipmaps (UI nitida), filtro bilineal y transparencia correcta.
+        /// </summary>
+        private static void ConfigureTextureQuality()
+        {
+            int count = 0;
+            foreach (var guid in AssetDatabase.FindAssets("t:Texture2D", new[] { "Assets/Recursos" }))
+            {
+                string path = AssetDatabase.GUIDToAssetPath(guid);
+                var importer = AssetImporter.GetAtPath(path) as TextureImporter;
+                if (importer == null || importer.textureType != TextureImporterType.Sprite) continue;
+
+                bool changed = false;
+                if (importer.textureCompression != TextureImporterCompression.CompressedHQ) { importer.textureCompression = TextureImporterCompression.CompressedHQ; changed = true; }
+                if (importer.mipmapEnabled) { importer.mipmapEnabled = false; changed = true; }
+                if (!importer.alphaIsTransparency) { importer.alphaIsTransparency = true; changed = true; }
+                if (importer.filterMode != FilterMode.Bilinear) { importer.filterMode = FilterMode.Bilinear; changed = true; }
+                if (importer.maxTextureSize < 2048) { importer.maxTextureSize = 2048; changed = true; }
+                if (importer.crunchedCompression) { importer.crunchedCompression = false; changed = true; }
+                if (changed)
+                {
+                    importer.SaveAndReimport();
+                    count++;
+                }
+            }
+            if (count > 0) Log.Add($"Imagenes: {count} texturas en alta calidad (sin fondo blanco en autos e iconos).");
+        }
+
+        /// <summary>
+        /// Canvas que se adapta a CUALQUIER pantalla horizontal: modo "Expand" garantiza que
+        /// el area de referencia completa siempre se vea (en 21:9 sobra a los lados, en 4:3
+        /// sobra arriba y abajo), sin recortar nada ni deformar.
+        /// </summary>
+        private static void MakeResponsive(Canvas canvas, Vector2 referenceResolution)
+        {
+            if (canvas == null) return;
+            var scaler = canvas.GetComponent<CanvasScaler>();
+            if (scaler == null) scaler = canvas.gameObject.AddComponent<CanvasScaler>();
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = referenceResolution;
+            scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.Expand;
+            canvas.transform.localScale = Vector3.one;
+        }
+
+        /// <summary>
+        /// Fondo que SIEMPRE cubre toda la pantalla sin deformarse (como "cover" en CSS):
+        /// se centra y crece hasta tapar el canvas, recortando lo que sobre.
+        /// </summary>
+        private static void CoverBackground(Image background) => CoverBackground(background, Center);
+
+        /// <param name="pivot">Que parte del fondo se conserva al recortar: (0.5,1) = la de arriba.</param>
+        private static void CoverBackground(Image background, Vector2 pivot)
+        {
+            if (background == null || background.sprite == null) return;
+            var rt = background.rectTransform;
+            rt.anchorMin = rt.anchorMax = Center;
+            rt.pivot = pivot;
+            rt.anchoredPosition = Vector2.zero;
+            rt.localScale = Vector3.one;
+            rt.sizeDelta = background.sprite.rect.size;
+            var fitter = background.GetComponent<AspectRatioFitter>();
+            if (fitter == null) fitter = background.gameObject.AddComponent<AspectRatioFitter>();
+            fitter.aspectMode = AspectRatioFitter.AspectMode.EnvelopeParent;
+            fitter.aspectRatio = background.sprite.rect.width / background.sprite.rect.height;
+            background.preserveAspect = false;
+            background.raycastTarget = false;
+        }
+
+        /// <summary>Crea un fondo "cover" como primer hijo de un panel que ocupa toda la pantalla.</summary>
+        private static Image AddCoverChild(Transform panel, Sprite sprite)
+        {
+            if (sprite == null) return null;
+            var bg = MakeImage(panel, "FondoCover", sprite, Color.white);
+            bg.transform.SetAsFirstSibling();
+            // El panel recorta lo que sobra del fondo
+            if (panel.GetComponent<RectMask2D>() == null) panel.gameObject.AddComponent<RectMask2D>();
+            CoverBackground(bg);
+            return bg;
+        }
+
+        /// <summary>Contenedor a pantalla completa ajustado a la zona segura (notch, esquinas).</summary>
+        private static RectTransform MakeSafeArea(Transform parent, string name)
+        {
+            var rt = MakeUI(parent, name);
+            Stretch(rt);
+            rt.gameObject.AddComponent<SafeAreaFitter>();
+            return rt;
+        }
+
+        /// <summary>Solo horizontal (izquierda y derecha), en iOS y Android.</summary>
+        private static void ConfigureLandscapeOnly()
+        {
+            UnityEditor.PlayerSettings.defaultInterfaceOrientation = UIOrientation.AutoRotation;
+            UnityEditor.PlayerSettings.allowedAutorotateToPortrait = false;
+            UnityEditor.PlayerSettings.allowedAutorotateToPortraitUpsideDown = false;
+            UnityEditor.PlayerSettings.allowedAutorotateToLandscapeLeft = true;
+            UnityEditor.PlayerSettings.allowedAutorotateToLandscapeRight = true;
+            UnityEditor.PlayerSettings.useAnimatedAutorotation = true;
+            Log.Add("Orientacion: solo horizontal (izquierda/derecha).");
         }
 
         private static bool SortingLayerExists(string name) => SortingLayer.layers.Any(l => l.name == name);
@@ -510,7 +632,10 @@ namespace TurboGrid.EditorTools
 
             RemoveGenerated(canvas.transform);
 
-            // El canvas del lobby usa resolucion de referencia 800x600 (ancho fijo 800).
+            // Lobby: area segura de 800x450 que se ve completa en cualquier pantalla horizontal.
+            MakeResponsive(canvas, new Vector2(800f, 450f));
+            var mainBg = FindInScene<Image>("Fondo");
+            if (mainBg != null && mainBg.transform.parent == canvas.transform) CoverBackground(mainBg);
             Transform root = canvas.transform;
             Sprite box = S("PANTALLA4/Elemento_Espacio.png");
             Sprite arrow = S("PANTALLA2/Boton_Siguiente.png");
@@ -527,14 +652,15 @@ namespace TurboGrid.EditorTools
             ((Image)nameInput.targetGraphic).color = new Color(1f, 1f, 1f, 0.001f); // se ve la caja "Fondo (2)" de atras
             SetRect((RectTransform)nameInput.transform, Center, Center, Center, new Vector2(12f, 81f), new Vector2(190f, 44f));
 
-            // Boton "Opciones" (arriba a la izquierda)
-            var optionsBtn = MakeButton(root, PREFIX + "BotonOpciones", box, "Opciones", 15);
+            // Boton "Opciones" (arriba a la izquierda, dentro de la zona segura del notch)
+            var safeTop = MakeSafeArea(root, PREFIX + "ZonaSegura");
+            var optionsBtn = MakeButton(safeTop, PREFIX + "BotonOpciones", box, "Opciones", 15);
             SetRect((RectTransform)optionsBtn.transform, TopLeft, TopLeft, Center, new Vector2(70f, -26f), new Vector2(118f, 34f));
 
             // ---------------- Sala de carrera ----------------
-            var sala = MakeImage(root, PREFIX + "PanelSala", S("PANTALLA5/Fondo_pantallas - copia (3).png"), Color.white);
+            var sala = MakeImage(root, PREFIX + "PanelSala", null, new Color(0.06f, 0.14f, 0.36f, 1f));
             Stretch(sala.rectTransform);
-            if (sala.sprite == null) sala.color = new Color(0.06f, 0.14f, 0.36f, 1f);
+            AddCoverChild(sala.transform, S("PANTALLA5/Fondo_pantallas - copia (3).png"));
 
             var salaTitle = MakeImage(sala.transform, "Titulo", S("PANTALLA5/Elemento_1.png"), Color.white);
             salaTitle.preserveAspect = true;
@@ -709,6 +835,7 @@ namespace TurboGrid.EditorTools
             var scene = EditorSceneManager.OpenScene(path, OpenSceneMode.Single);
 
             EnsureEventSystem();
+            SetupHdTrack();
             SetupStartGrid();
             SetupManagers(powerUpPrefab);
             SetupCamera();
@@ -717,13 +844,7 @@ namespace TurboGrid.EditorTools
             if (canvas == null) canvas = Object.FindFirstObjectByType<Canvas>(FindObjectsInactive.Include);
             if (canvas != null)
             {
-                var scaler = canvas.GetComponent<CanvasScaler>();
-                if (scaler != null)
-                {
-                    scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-                    scaler.referenceResolution = new Vector2(1920f, 1080f);
-                    scaler.matchWidthOrHeight = 0.5f;
-                }
+                MakeResponsive(canvas, new Vector2(1920f, 1080f));
 
                 DisableMockups(canvas.transform);
                 RemoveGenerated(canvas.transform);
@@ -739,6 +860,54 @@ namespace TurboGrid.EditorTools
             extra?.Invoke(scene);
             SaveScene(scene);
             Log.Add($"{Path.GetFileNameWithoutExtension(path)}: parrilla, camara, HUD, controles, mini-mapa y resultados listos.");
+        }
+
+        /// <summary>
+        /// Reemplaza la imagen del prototipo (1385 px, borrosa) por las capas HD del diseñador:
+        /// fondo con arboles/gradas y la pista. La posicion y escala se calcularon comparando
+        /// las franjas rojas de ambas imagenes (coinciden 1 a 1 con los muros y la parrilla).
+        /// El objeto "Pista" original se conserva por sus colliders; solo se oculta su imagen.
+        /// </summary>
+        private static void SetupHdTrack()
+        {
+            var track = FindInScene<SpriteRenderer>("Pista");
+            if (track == null) return;
+
+            Sprite fondo = S("PANTALLA JUGABILIDAD/Fondo_Pista.png");
+            Sprite pista = S("PANTALLA JUGABILIDAD/Pista.png");
+            if (fondo == null || pista == null) return;
+
+            foreach (var old in new[] { PREFIX + "FondoHD", PREFIX + "PistaHD" })
+            {
+                var t = FindInScene<Transform>(old);
+                if (t != null) Object.DestroyImmediate(t.gameObject);
+            }
+
+            // 1 pixel del prototipo = 1 unidad de mundo; las capas HD van a escala 0.785 de eso.
+            const float hdScale = 78.5f; // (sprites a 100 px por unidad)
+            Color tint = track.color;     // los circuitos 2 y 3 tienen otro tono
+
+            var fondoGo = new GameObject(PREFIX + "FondoHD");
+            fondoGo.transform.position = new Vector3(39.8f, -3.9f, 0.1f);
+            fondoGo.transform.localScale = Vector3.one * hdScale;
+            var fondoSr = fondoGo.AddComponent<SpriteRenderer>();
+            fondoSr.sprite = fondo;
+            fondoSr.color = tint;
+            fondoSr.sortingLayerID = track.sortingLayerID;
+            fondoSr.sortingOrder = track.sortingOrder - 2;
+
+            var pistaGo = new GameObject(PREFIX + "PistaHD");
+            pistaGo.transform.position = new Vector3(10.4f, -0.7f, 0.05f);
+            pistaGo.transform.localScale = Vector3.one * hdScale;
+            var pistaSr = pistaGo.AddComponent<SpriteRenderer>();
+            pistaSr.sprite = pista;
+            pistaSr.color = tint;
+            pistaSr.sortingLayerID = track.sortingLayerID;
+            pistaSr.sortingOrder = track.sortingOrder - 1;
+
+            // Ocultar la imagen vieja (los colliders siguen funcionando).
+            track.enabled = false;
+            Log.Add($"{SceneManager.GetActiveScene().name}: pista y fondo en HD.");
         }
 
         private static void SetupStartGrid()
@@ -846,8 +1015,7 @@ namespace TurboGrid.EditorTools
 
         private static void BuildHud(Transform canvas)
         {
-            var hudRoot = MakeUI(canvas, PREFIX + "HUD");
-            Stretch(hudRoot);
+            var hudRoot = MakeSafeArea(canvas, PREFIX + "HUD");
             var hud = hudRoot.gameObject.AddComponent<HUD_RaceUI>();
 
             // --- Puntaje (arriba izquierda) con el arte del acumulador ---
@@ -921,8 +1089,7 @@ namespace TurboGrid.EditorTools
 
         private static void BuildControls(Transform canvas)
         {
-            var root = MakeUI(canvas, PREFIX + "Controles");
-            Stretch(root);
+            var root = MakeSafeArea(canvas, PREFIX + "Controles");
             var controls = root.gameObject.AddComponent<ControlsUI>();
 
             Sprite arrow = S("PANTALLA2/Boton_Siguiente.png");
@@ -1053,9 +1220,9 @@ namespace TurboGrid.EditorTools
             Stretch(holder);
             var endUi = holder.gameObject.AddComponent<EndRaceUI>();
 
-            var panel = MakeImage(holder, "Panel", S("PANTALLA4/Fondo_pantallas - copia.png"), Color.white);
+            var panel = MakeImage(holder, "Panel", null, new Color(0.05f, 0.1f, 0.3f, 0.97f));
             Stretch(panel.rectTransform);
-            if (panel.sprite == null) panel.color = new Color(0.05f, 0.1f, 0.3f, 0.95f);
+            AddCoverChild(panel.transform, S("PANTALLA4/Fondo_pantallas - copia.png"));
 
             Sprite box = S("PANTALLA4/Elemento_Espacio.png");
 
@@ -1193,16 +1360,14 @@ namespace TurboGrid.EditorTools
             var scene = EditorSceneManager.OpenScene(path, OpenSceneMode.Single);
             EnsureEventSystem();
 
-            // Igual que en el lobby: el canvas debe escalar con la pantalla del celular.
-            // Match = 1 (alto) porque los botones estan cerca de los bordes laterales.
-            foreach (var scaler in Object.FindObjectsByType<CanvasScaler>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            // Area de 800x600 siempre visible en cualquier pantalla horizontal; fondo "cover".
+            foreach (var c in Object.FindObjectsByType<Canvas>(FindObjectsInactive.Include, FindObjectsSortMode.None))
             {
-                if (scaler.uiScaleMode == CanvasScaler.ScaleMode.ConstantPixelSize)
-                {
-                    scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-                    scaler.referenceResolution = new Vector2(800f, 600f);
-                    scaler.matchWidthOrHeight = 1f;
-                }
+                if (!c.isRootCanvas) continue;
+                MakeResponsive(c, new Vector2(800f, 600f));
+                var bg = c.transform.Find("Fondo");
+                // Inicio: el logo esta dibujado arriba en el fondo -> se recorta solo por abajo.
+                if (bg != null) CoverBackground(bg.GetComponent<Image>(), path == INICIO ? new Vector2(0.5f, 1f) : Center);
             }
 
             // La imagen guia del diseñador se veia en pantallas anchas: se desactiva.
@@ -1270,10 +1435,10 @@ namespace TurboGrid.EditorTools
 
             var cardsData = new (string title, string body, Sprite icon)[]
             {
-                ("MANEJA", "Flechas, timón o joystick: elígelo en Opciones", LoadSprite(iconos, "Iconos_1")),
-                ("GASOLINA", "Cada bidón suma 20 pts y reaparece a los 10 s", LoadSprite(iconos, "Iconos_0")),
-                ("DRS", "Recógelo en la pista y úsalo: +velocidad por 3 s", LoadSprite(iconos, "Iconos_2")),
-                ("PINCHAZO", "Deja quieto 2 s a un rival al azar", LoadSprite(iconos, "Iconos_4")),
+                ("MANEJA", "Flechas, timón o joystick: elígelo en Opciones", S("PANTALLA JUGABILIDAD/Joystick_Parte1.png") ?? LoadSprite(iconos, "Iconos_1")),
+                ("GASOLINA", "Cada bidón suma 20 pts y reaparece a los 10 s", S("PANTALLA JUGABILIDAD/Item_gasolina.png") ?? LoadSprite(iconos, "Iconos_0")),
+                ("DRS", "Recógelo en la pista y úsalo: +velocidad por 3 s", S("PANTALLA JUGABILIDAD/Boton_velocidad.png") ?? LoadSprite(iconos, "Iconos_2")),
+                ("PINCHAZO", "Deja quieto 2 s a un rival al azar", S("PANTALLA JUGABILIDAD/Boton_poder.png") ?? LoadSprite(iconos, "Iconos_4")),
                 ("¡GANA!", "Llega a 1000 pts o ten más puntos al acabar los 3:00", S("PANTALLA6/Elemento_1.png")),
             };
 

@@ -125,3 +125,16 @@ Todo el audio es **generado por código** (sin archivos de internet, sin derecho
 **Reemplazar un sonido:** poner un archivo con el mismo nombre (`.wav`, `.ogg` o `.mp3`) en la misma carpeta y borrar el generado. Nombres: `gasolina`, `recoger_drs`, `activar_drs`, `recoger_pinchazo`, `lanzar_pinchazo`, `pinchado`, `choque`, `frenazo`, `cuenta_beep`, `cuenta_go`, `boton`, `jugador_listo`, `jugador_entra`, `aplausos`, `musica_menu`, `musica_carrera`, `musica_victoria`.
 
 La música de fondo es un loop perfecto: se genera con un número exacto de compases y la cola de las últimas notas se suma al inicio, así el corte no se nota.
+
+## 10. Pantallas y calidad de imagen
+
+- **Solo horizontal** (izquierda/derecha): lo fija el menú de configuración en Player Settings.
+- **Cualquier tamaño de pantalla**: todos los Canvas usan *Scale With Screen Size* en modo **Expand**
+  (MainMenu 800x450, Inicio/Instrucciones 800x600, carrera 1920x1080). El área de referencia completa
+  siempre se ve; en pantallas más anchas sobra espacio a los lados y en tablets 4:3 arriba/abajo.
+  Verificado para 4:3, 16:10, 16:9, 19.5:9 (iPhone) y 21:9.
+- **Fondos "cover"**: usan `AspectRatioFitter` (Envelope Parent): cubren toda la pantalla sin deformarse.
+- **Zona segura**: HUD, controles y botones de esquina usan `SafeAreaFitter` (no quedan bajo el notch).
+- **Imágenes**: compresión *High Quality*, sin mipmaps. Los autos e íconos del prototipo tenían fondo blanco;
+  se limpió con `python3 Tools/quitar_fondo_blanco.py <imagen.png>`. La pista, la gasolina, los power-ups y
+  los íconos de instrucciones usan ahora las imágenes HD del diseñador.

@@ -120,10 +120,9 @@ namespace TurboGrid
             });
 
             // Procedurales
-            NewButton(gridRt, "Motor", "Motor: acelerar", ColEngine, () => StartDemo(EngineRev(false), "Motor procedural: acelera, cambia de marcha y desacelera"));
-            NewButton(gridRt, "MotorDrs", "Motor con DRS", ColEngine, () => StartDemo(EngineRev(true), "Motor con DRS: mas agudo + silbido de turbo"));
-            NewButton(gridRt, "Derrape", "Derrape", ColEngine, () => StartDemo(Skid(), "Derrape procedural: giro fuerte a alta velocidad"));
-            NewButton(gridRt, "Ralenti", "Motor en ralenti", ColEngine, () => StartDemo(Idle(), "Motor en ralenti (antes de la largada)"));
+            NewButton(gridRt, "Motor", "V12: acelerar", ColEngine, () => StartDemo(EngineRev(false), "Motor V12: ralenti -> 9000 rpm -> suelta el acelerador"));
+            NewButton(gridRt, "MotorDrs", "V12 con DRS", ColEngine, () => StartDemo(EngineRev(true), "V12 con DRS: mas rpm, mas abierto + soplido del turbo"));
+            NewButton(gridRt, "Ralenti", "V12 en ralenti", ColEngine, () => StartDemo(Idle(), "V12 en ralenti (antes de la largada)"));
 
             if (!AudioManager.SfxEnabled)
                 SetStatus("El sonido esta en SILENCIO: cambialo en Opciones > Sonido");
@@ -175,7 +174,7 @@ namespace TurboGrid
         {
             if (_demo != null) StopCoroutine(_demo);
             _demo = null;
-            if (_engine != null) _engine.SetPreview(0f, 0f, 0f, false);
+            if (_engine != null) _engine.SetPreview(0f, 0f, false);
             if (_engine != null) { Destroy(_engine.gameObject); _engine = null; }
         }
 
@@ -184,29 +183,17 @@ namespace TurboGrid
             // Ralenti -> acelera a fondo (cambia marchas) -> suelta el acelerador
             for (float t = 0f; t < 0.6f; t += Time.unscaledDeltaTime)
             {
-                _engine.SetPreview(0f, 0f, 0f, drs);
+                _engine.SetPreview(0f, 0f, drs);
                 yield return null;
             }
             for (float t = 0f; t < 4f; t += Time.unscaledDeltaTime)
             {
-                _engine.SetPreview(Mathf.Clamp01(t / 4f) * (drs ? 1.15f : 1f), 1f, 0f, drs);
+                _engine.SetPreview(Mathf.Clamp01(t / 4f) * (drs ? 1.15f : 1f), 1f, drs);
                 yield return null;
             }
             for (float t = 0f; t < 2.5f; t += Time.unscaledDeltaTime)
             {
-                _engine.SetPreview(Mathf.Lerp(drs ? 1.15f : 1f, 0.1f, t / 2.5f), 0f, 0f, drs);
-                yield return null;
-            }
-            StopDemo();
-            SetStatus("Listo");
-        }
-
-        private IEnumerator Skid()
-        {
-            for (float t = 0f; t < 2.2f; t += Time.unscaledDeltaTime)
-            {
-                float skid = t < 0.3f ? t / 0.3f : (t > 1.7f ? Mathf.Clamp01((2.2f - t) / 0.5f) : 1f);
-                _engine.SetPreview(0.8f, 1f, skid, false);
+                _engine.SetPreview(Mathf.Lerp(drs ? 1.15f : 1f, 0.1f, t / 2.5f), 0f, drs);
                 yield return null;
             }
             StopDemo();
@@ -217,7 +204,7 @@ namespace TurboGrid
         {
             for (float t = 0f; t < 3f; t += Time.unscaledDeltaTime)
             {
-                _engine.SetPreview(0f, 0f, 0f, false);
+                _engine.SetPreview(0f, 0f, false);
                 yield return null;
             }
             StopDemo();
