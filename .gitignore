@@ -81,3 +81,6 @@ $RECYCLE.BIN/
 # Archivos temporales de Multiplayer Play Mode / Unity
 .utmp/
 *.slnx
+# Salidas de depuracion de los builds (Burst / IL2CPP)
+*_BurstDebugInformation_DoNotShip/
+*_BackUpThisFolder_ButDontShipItWithYourGame/

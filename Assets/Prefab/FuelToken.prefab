@@ -30,7 +30,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: -7.54}
-  m_LocalScale: {x: 13, y: 13, z: 13}
+  m_LocalScale: {x: 5.4054055, y: 5.4054055, z: 5.4054055}
   m_ConstrainProportionsScale: 1
   m_Children: []
   m_Father: {fileID: 0}
@@ -82,9 +82,9 @@ SpriteRenderer:
   m_GlobalIlluminationMeshLod: 0
   m_SortingLayerID: 594953723
   m_SortingLayer: 2
-  m_SortingOrder: 0
+  m_SortingOrder: 5
   m_MaskInteraction: 0
-  m_Sprite: {fileID: 1774088499, guid: 4b64139ece597934985f15eac3ab47fd, type: 3}
+  m_Sprite: {fileID: 8370808783177133533, guid: 290bbcdd92fc8f24097c4200ed96ff78, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -129,7 +129,7 @@ CircleCollider2D:
   m_CompositeOperation: 0
   m_CompositeOrder: 0
   m_Offset: {x: 0, y: 0}
-  m_Radius: 0.99
+  m_Radius: 3.33
 --- !u!114 &5253974117329440127
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -170,3 +170,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TurboGrid.FuelToken
   ShowTopMostFoldoutHeaderGroup: 1
+  IsAvailable:
+    UpdateTraits:
+      MinSecondsBetweenUpdates: 0
+      MaxSecondsBetweenUpdates: 0
+    m_InternalValue: 1
+  pickupRadius: 40
