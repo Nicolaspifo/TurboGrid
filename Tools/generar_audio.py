@@ -296,21 +296,65 @@ def sfx_jugador_entra():
     return fade_edges(pop + 0.3 * noise(n) * env_exp(n, 0.01))
 
 
+def reverb(x, decay=1.6, wet=0.45, predelay=0.02, brightness=5000):
+    """Reverberacion por convolucion con una respuesta de sala sintetica."""
+    n_ir = int(decay * SR)
+    t = np.arange(n_ir) / SR
+    ir = noise(n_ir) * np.exp(-t * 6.9 / decay)
+    ir = lowpass(ir, brightness)
+    # reflexiones tempranas (paredes cercanas)
+    for d, g in [(0.011, 0.5), (0.019, 0.4), (0.029, 0.33), (0.041, 0.25)]:
+        k = int(d * SR)
+        if k < n_ir:
+            ir[k] += g
+    pre = np.zeros(int(predelay * SR))
+    ir = np.concatenate([pre, ir])
+    ir /= np.sqrt(np.sum(ir ** 2))
+    size = 1
+    while size < len(x) + len(ir):
+        size *= 2
+    wet_sig = np.fft.irfft(np.fft.rfft(x, size) * np.fft.rfft(ir, size), size)[: len(x) + len(ir)]
+    dry = np.concatenate([x, np.zeros(len(ir))])
+    wet_sig *= np.max(np.abs(dry)) / (np.max(np.abs(wet_sig)) + 1e-9)
+    return dry * (1 - wet * 0.5) + wet_sig * wet
+
+
 def sfx_aplausos():
-    # aplausos + "vitoreo": muchos golpes cortos de ruido al azar
-    dur = 3.2
+    # Publico aplaudiendo en un estadio: cientos de palmadas con timbre distinto,
+    # un "uuuh" de fondo y reverberacion de estadio.
+    dur = 3.6
     n = int(dur * SR)
     out = np.zeros(n)
-    claps = 520
-    for _ in range(claps):
-        start = int(rng.uniform(0, dur - 0.05) * SR)
-        ln = int(rng.uniform(0.008, 0.02) * SR)
-        c = noise(ln) * env_exp(ln, 0.015) * rng.uniform(0.3, 1.0)
-        out[start:start + ln] += c
-    out = bandpass(out, 700, 6000)
     t = t_axis(dur)
-    env = np.clip(t / 0.25, 0, 1) * np.clip((dur - t) / 1.2, 0, 1)
-    return fade_edges(out * env, 0.01, 0.1)
+
+    # Densidad: sube rapido, se mantiene y se apaga poco a poco.
+    density = np.clip(t / 0.35, 0, 1) * np.clip((dur - 0.3 - t) / 1.6, 0, 1)
+    starts = []
+    while len(starts) < 1100:
+        c = rng.uniform(0, dur - 0.05)
+        if rng.uniform() < density[int(c * SR)]:
+            starts.append(c)
+
+    for c in starts:
+        ln = int(rng.uniform(0.006, 0.016) * SR)
+        burst = noise(ln) * env_exp(ln, rng.uniform(0.008, 0.02))
+        # cada persona suena distinto (manos mas graves o mas agudas)
+        burst = bandpass(burst, rng.uniform(500, 1300), rng.uniform(2200, 5200))
+        s0 = int(c * SR)
+        out[s0:s0 + ln] += burst * rng.uniform(0.35, 1.0)
+
+    # "Uuuh" del publico: ruido grave con formantes que ondulan
+    cheer = lowpass(noise(n), 900) - lowpass(noise(n), 250)
+    swell = np.clip(t / 0.5, 0, 1) * np.clip((dur - t) / 2.0, 0, 1)
+    wobble = 0.75 + 0.25 * np.sin(2 * np.pi * 0.9 * t) * np.sin(2 * np.pi * 0.37 * t + 1)
+    out += cheer * swell * wobble * 0.9
+
+    out = reverb(out, decay=1.8, wet=0.55, predelay=0.025, brightness=4500)
+    # recortar el silencio del final de la cola de reverberacion
+    loud = np.nonzero(np.abs(out) > np.max(np.abs(out)) * 0.004)[0]
+    if loud.size:
+        out = out[: loud[-1] + int(0.05 * SR)]
+    return fade_edges(out, 0.01, 0.4)
 
 
 # ----------------------------------------------------------------------------

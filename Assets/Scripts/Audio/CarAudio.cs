@@ -4,11 +4,13 @@ namespace TurboGrid
 {
     /// <summary>
     /// Audio PROCEDURAL de cada auto (se sintetiza en tiempo real, sin archivos):
-    ///  - Motor: onda diente de sierra + sub-grave + "retumbe" de cilindros. El tono sube
-    ///    con la velocidad y simula cambios de marcha; al acelerar suena mas fuerte y
-    ///    el DRS le agrega un silbido de turbo.
-    ///  - Derrape: ruido filtrado + chillido agudo cuando el auto gira fuerte a alta
-    ///    velocidad o frena en seco.
+    ///  - Motor: dos dientes de sierra levemente desafinados + sub-grave + "retumbe" de
+    ///    cilindros. El tono sube PAREJO con la velocidad (solo una ondulacion leve al
+    ///    cambiar de marcha) y suena mas fuerte al acelerar.
+    ///  - DRS: el motor se abre (mas brillante y un poco mas agudo) y se suma el soplido
+    ///    de aire del turbo. Sin pitidos fijos.
+    ///  - Derrape: chillido de llanta con armonicos que tiembla y cambia de tono
+    ///    (efecto "stick-slip") + roce de asfalto.
     ///  - Frenazo: efecto corto al frenar fuerte (solo el auto propio).
     /// Los autos remotos suenan mas bajo y segun su distancia a la camara.
     /// Lo agrega CarVisuals automaticamente.
@@ -23,16 +25,22 @@ namespace TurboGrid
         private AudioSource _skidSource;
         private int _sampleRate;
 
+        // Afinacion del motor (Hz): ralenti -> velocidad maxima.
+        private const float IDLE_FREQ = 78f;
+        private const float TOP_FREQ = 200f;
+
         // Parametros que lee el hilo de audio (se escriben desde Update).
-        private volatile float _engineFreq = 45f;
+        private volatile float _engineFreq = IDLE_FREQ;
         private volatile float _engineGain;
-        private volatile float _turboGain;
+        private volatile float _drsAmount;   // 0..1
         private volatile float _skidGain;
+        private volatile float _skidPitch = 1150f;
 
         // Estado del hilo de audio
-        private double _phase, _subPhase, _turboPhase, _squealPhase;
-        private float _curFreq = 45f, _curGain, _curTurbo, _curSkid;
-        private float _lp1, _lp2, _nlp, _snA, _snB;
+        private double _phase, _phase2, _subPhase, _squealPhase;
+        private float _curFreq = IDLE_FREQ, _curGain, _curDrs, _curSkid, _curSkidPitch = 1150f;
+        private float _lp1, _lp2, _nlp, _airA, _airB;
+        private float _snA, _snB, _wander, _flutter;
         private uint _rand = 0x9E3779B9u;
 
         // Estado del hilo principal
@@ -139,13 +147,7 @@ namespace TurboGrid
             if (isLocal && LocalPlayerSettings.Scheme == ControlScheme.Joystick && !CarInput.KeyboardActive)
                 throttle = Mathf.Clamp01(CarInput.JoystickDirection.magnitude);
 
-            // --- Motor con "cambios de marcha": dentro de cada marcha el tono sube y al cambiar baja ---
-            float gearPos = Mathf.Clamp(speed01, 0f, 1.2f) * GEARS;
-            int gear = Mathf.Min(GEARS - 1, Mathf.FloorToInt(gearPos));
-            float inGear = Mathf.Clamp01(gearPos - gear);
-            float freq = 42f + gear * 14f + inGear * 58f;
-            if (drs) freq *= 1.18f;
-            _engineFreq = freq;
+            _engineFreq = EngineFrequency(speed01, drs);
 
             float baseGain = isLocal ? 0.32f : 0.2f;
             float load = 0.55f + 0.45f * Mathf.Max(throttle, speed01 * 0.6f);
@@ -157,7 +159,7 @@ namespace TurboGrid
             // Atenuacion por distancia para autos remotos.
             float distFactor = isLocal ? 1f : DistanceFactor(pos, 600f);
             _engineGain = gain * distFactor;
-            _turboGain = drs ? 0.12f * distFactor * (AudioManager.SfxEnabled ? 1f : 0f) : 0f;
+            _drsAmount = drs && AudioManager.SfxEnabled ? 1f : 0f;
 
             // --- Derrape: giro fuerte a alta velocidad, o freno fuerte ---
             float turnNorm = Mathf.Clamp01(_turnRate / GameConstants.CAR_TURN_SPEED);
@@ -165,7 +167,8 @@ namespace TurboGrid
             bool braking = isLocal && CarInput.Throttle < -0.1f && _car != null && _car.CurrentSpeed > maxSpeed * 0.45f;
             if (braking) skid = Mathf.Max(skid, 0.8f * speed01);
             if (!AudioManager.SfxEnabled || finished) skid = 0f;
-            _skidGain = skid * (isLocal ? 0.28f : 0.18f) * distFactor;
+            _skidGain = skid * (isLocal ? 0.26f : 0.16f) * distFactor;
+            _skidPitch = 1050f + 320f * speed01;
 
             // Frenazo (efecto corto) al empezar a frenar fuerte
             if (braking && !_wasBraking && Time.time - _lastBrakeSound > 1.2f)
@@ -188,17 +191,27 @@ namespace TurboGrid
         private void UpdatePreview()
         {
             float speed01 = _previewSpeed01;
-            float gearPos = Mathf.Clamp(speed01, 0f, 1.2f) * GEARS;
-            int gear = Mathf.Min(GEARS - 1, Mathf.FloorToInt(gearPos));
-            float inGear = Mathf.Clamp01(gearPos - gear);
-            float freq = 42f + gear * 14f + inGear * 58f;
-            if (_previewDrs) freq *= 1.18f;
-            _engineFreq = freq;
+            _engineFreq = EngineFrequency(speed01, _previewDrs);
 
             bool on = AudioManager.SfxEnabled;
             _engineGain = on ? 0.32f * (0.55f + 0.45f * Mathf.Max(_previewThrottle, speed01 * 0.6f)) : 0f;
-            _turboGain = on && _previewDrs ? 0.12f : 0f;
-            _skidGain = on ? _previewSkid * 0.28f : 0f;
+            _drsAmount = on && _previewDrs ? 1f : 0f;
+            _skidGain = on ? _previewSkid * 0.26f : 0f;
+            _skidPitch = 1050f + 320f * Mathf.Clamp01(speed01);
+        }
+
+        /// <summary>
+        /// Tono del motor segun la velocidad: sube parejo (curva suave) con una
+        /// ondulacion muy leve por marcha para que no suene plano.
+        /// </summary>
+        private static float EngineFrequency(float speed01, bool drs)
+        {
+            float s = Mathf.Clamp(speed01, 0f, 1.2f);
+            float gearPos = s * GEARS;
+            float inGear = gearPos - Mathf.Floor(gearPos);
+            float freq = IDLE_FREQ + (TOP_FREQ - IDLE_FREQ) * Mathf.Pow(s, 0.85f) + (inGear - 0.5f) * 8f;
+            if (drs) freq *= 1.06f;
+            return freq;
         }
 
         private static float DistanceFactor(Vector3 pos, float maxDistance)
@@ -226,72 +239,93 @@ namespace TurboGrid
         {
             float targetFreq = _engineFreq;
             float targetGain = _engineGain;
-            float targetTurbo = _turboGain;
+            float targetDrs = _drsAmount;
             float sr = _sampleRate;
-            float smooth = 1f - Mathf.Exp(-1f / (sr * 0.05f));     // ~50 ms para el tono
+            float pitchSmooth = 1f - Mathf.Exp(-1f / (sr * 0.12f));   // subida suave del tono
             float gainSmooth = 1f - Mathf.Exp(-1f / (sr * 0.08f));
-            float lpCoef = 1f - Mathf.Exp(-2f * Mathf.PI * 1800f / sr);
+            float drsSmooth = 1f - Mathf.Exp(-1f / (sr * 0.25f));
+            float airHp = 1f - Mathf.Exp(-2f * Mathf.PI * 2200f / sr);
+            float airLp = 1f - Mathf.Exp(-2f * Mathf.PI * 6500f / sr);
 
             for (int i = 0; i < data.Length; i++)
             {
-                _curFreq += (targetFreq - _curFreq) * smooth;
+                _curFreq += (targetFreq - _curFreq) * pitchSmooth;
                 _curGain += (targetGain - _curGain) * gainSmooth;
-                _curTurbo += (targetTurbo - _curTurbo) * gainSmooth;
+                _curDrs += (targetDrs - _curDrs) * drsSmooth;
 
                 _phase += _curFreq / sr;
                 if (_phase >= 1.0) _phase -= 1.0;
+                _phase2 += _curFreq * 1.007 / sr;            // desafinado leve = motor "vivo"
+                if (_phase2 >= 1.0) _phase2 -= 1.0;
                 _subPhase += _curFreq * 0.5 / sr;
                 if (_subPhase >= 1.0) _subPhase -= 1.0;
-                _turboPhase += (_curFreq * 11.0) / sr;
-                if (_turboPhase >= 1.0) _turboPhase -= 1.0;
 
-                float saw = (float)(_phase * 2.0 - 1.0);
-                float sub = _subPhase < 0.5 ? 0.6f : -0.6f;
-                // "retumbe" de los cilindros (modulacion de amplitud)
-                float rumble = 0.7f + 0.3f * Mathf.Sin((float)(_subPhase * 2.0 * Mathf.PI));
-                _nlp += (NextNoise() - _nlp) * 0.08f;
+                float saw = (float)(_phase * 2.0 - 1.0) * 0.5f + (float)(_phase2 * 2.0 - 1.0) * 0.4f;
+                float sub = _subPhase < 0.5 ? 0.35f : -0.35f;
+                float rumble = 0.8f + 0.2f * Mathf.Sin((float)(_subPhase * 2.0 * Mathf.PI));
+                _nlp += (NextNoise() - _nlp) * 0.12f;
+                float raw = (saw + sub) * rumble + _nlp * 0.25f;
 
-                float raw = (saw * 0.55f + sub * 0.45f) * rumble + _nlp * 0.35f;
-                // Suavizar (dos filtros paso-bajo) para que no suene "chiptune"
+                // Filtro: mas abierto (brillante) con DRS
+                float cutoff = 2600f + 1400f * _curDrs;
+                float lpCoef = 1f - Mathf.Exp(-2f * Mathf.PI * cutoff / sr);
                 _lp1 += (raw - _lp1) * lpCoef;
                 _lp2 += (_lp1 - _lp2) * lpCoef;
-                float engine = Mathf.Clamp(_lp2 * 1.6f, -1f, 1f);
+                float engine = Mathf.Clamp(_lp2 * 1.5f * (1f + 0.25f * _curDrs), -1f, 1f);
 
-                float turbo = Mathf.Sin((float)(_turboPhase * 2.0 * Mathf.PI)) * _curTurbo;
-                data[i] = engine * _curGain + turbo;
+                // DRS: soplido de aire del turbo (ruido pasa-banda), sin tono fijo.
+                float n = NextNoise();
+                _airA += (n - _airA) * airHp;
+                float airHigh = n - _airA;
+                _airB += (airHigh - _airB) * airLp;
+                float air = _airB * 0.55f * _curDrs;
+
+                data[i] = (engine + air) * _curGain;
             }
         }
 
         private void OnSkidRead(float[] data)
         {
             float target = _skidGain;
+            float targetPitch = _skidPitch;
             float sr = _sampleRate;
-            float gainSmooth = 1f - Mathf.Exp(-1f / (sr * 0.06f));
-            float hpCoef = 1f - Mathf.Exp(-2f * Mathf.PI * 1500f / sr);
-            float lpCoef = 1f - Mathf.Exp(-2f * Mathf.PI * 5500f / sr);
+            float gainSmooth = 1f - Mathf.Exp(-1f / (sr * 0.05f));
+            float pitchSmooth = 1f - Mathf.Exp(-1f / (sr * 0.2f));
+            float wanderCoef = 1f - Mathf.Exp(-2f * Mathf.PI * 4f / sr);    // deriva lenta del tono
+            float flutterCoef = 1f - Mathf.Exp(-2f * Mathf.PI * 45f / sr);  // temblor de la goma
+            float hpCoef = 1f - Mathf.Exp(-2f * Mathf.PI * 1400f / sr);
+            float lpCoef = 1f - Mathf.Exp(-2f * Mathf.PI * 4200f / sr);
 
             for (int i = 0; i < data.Length; i++)
             {
                 _curSkid += (target - _curSkid) * gainSmooth;
+                _curSkidPitch += (targetPitch - _curSkidPitch) * pitchSmooth;
                 if (_curSkid < 0.0005f && target < 0.0005f)
                 {
                     data[i] = 0f;
                     continue;
                 }
 
-                // Ruido pasa-banda (roce de la llanta)
-                float n = NextNoise();
-                _snA += (n - _snA) * hpCoef;          // paso-bajo
-                float high = n - _snA;                // paso-alto
-                _snB += (high - _snB) * lpCoef;       // recorta los agudos extremos
+                // El tono del chillido deriva y tiembla (la llanta "agarra y suelta").
+                _wander += (NextNoise() - _wander) * wanderCoef;
+                _flutter += (NextNoise() - _flutter) * flutterCoef;
+                // (el ruido filtrado a 4 Hz tiene desviacion ~0.01: x12 = ~12% de variacion de tono)
+                float freq = _curSkidPitch * (1f + Mathf.Clamp(_wander * 12f, -0.3f, 0.3f));
 
-                // Chillido agudo inestable
-                float jitter = 1f + 0.03f * NextNoise();
-                _squealPhase += 2350.0 * jitter / sr;
+                _squealPhase += freq / sr;
                 if (_squealPhase >= 1.0) _squealPhase -= 1.0;
-                float squeal = Mathf.Sin((float)(_squealPhase * 2.0 * Mathf.PI));
+                float ph = (float)(_squealPhase * 2.0 * Mathf.PI);
+                float squeal = Mathf.Sin(ph) + 0.55f * Mathf.Sin(2f * ph) + 0.3f * Mathf.Sin(3f * ph);
+                squeal = squeal / (1f + Mathf.Abs(squeal) * 0.6f);        // saturacion suave
+                float am = Mathf.Clamp01(0.65f + _flutter * 6f);
 
-                data[i] = (_snB * 0.9f + squeal * 0.35f) * _curSkid;
+                // Roce del asfalto: ruido pasa-banda
+                float n = NextNoise();
+                _snA += (n - _snA) * hpCoef;
+                float high = n - _snA;
+                _snB += (high - _snB) * lpCoef;
+
+                data[i] = (squeal * 0.55f * am + _snB * 0.5f) * _curSkid;
             }
         }
     }
