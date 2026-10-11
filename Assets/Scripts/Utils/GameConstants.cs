@@ -22,7 +22,7 @@ namespace TurboGrid
         public const float FUEL_PICKUP_RADIUS = 40f;     // unidades de mundo (la pista mide ~1385 x 795)
 
         // Power-ups en pista (1 DRS + 1 Pinchazo simultaneos)
-        public const float POWERUP_RESPAWN_SECONDS = 8f;
+        public const float POWERUP_RESPAWN_SECONDS = 5f;
         public const float POWERUP_PICKUP_RADIUS = 45f;
 
         public const float DRS_DURATION = 3f;
