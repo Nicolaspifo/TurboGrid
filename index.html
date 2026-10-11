@@ -12,7 +12,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/estilos.css?v=3">
+  <link rel="stylesheet" href="assets/estilos.css?v=4">
 </head>
 <body>
 
@@ -43,15 +43,16 @@
   </div>
 </section>
 
-<!-- VIDEO: pega el ID de YouTube en data-youtube (lo que va despues de "v=" en el link).
-     Ejemplo: https://www.youtube.com/watch?v=AbCdEf12345  ->  data-youtube="AbCdEf12345" -->
-<section id="video" class="seccion video" data-youtube="">
-  <h2>Mira una carrera</h2>
-  <p class="intro">Partida completa con varios pilotos: salida desde la parrilla, gasolina, DRS, pinchazos y el ganador.</p>
-  <div class="marco-video">
-    <div class="video-pronto">
-      <img src="assets/img/pantalla-carrera.jpg" alt="" loading="lazy">
-      <div class="video-aviso"><span class="play">▶</span><p>Video demostrativo<br><b>muy pronto</b></p></div>
+<section id="video" class="seccion video">
+  <div class="video-grid">
+    <div class="telefono">
+      <video src="assets/video/promo_720.mp4" poster="assets/video/poster.jpg" controls playsinline preload="metadata"></video>
+    </div>
+    <div class="video-texto">
+      <p class="etiqueta">Video promocional</p>
+      <h2>Mira Turbo Grid en acción</h2>
+      <p>60 segundos de carrera: la salida desde la parrilla, la gasolina, el DRS, los pinchazos y el ganador.</p>
+      <p class="pista">Toca ▶ para verlo con sonido.</p>
     </div>
   </div>
 </section>
@@ -163,16 +164,5 @@
   <p>Equipo: Programación · Interfaz (UI/UX) · Diseño de Mapas y Personajes</p>
 </footer>
 
-<script>
-  // Si hay un ID de YouTube, reemplaza el aviso "muy pronto" por el video.
-  (function () {
-    var seccion = document.getElementById("video");
-    var id = (seccion.getAttribute("data-youtube") || "").trim();
-    if (!id) return;
-    var marco = seccion.querySelector(".marco-video");
-    marco.innerHTML = '<iframe src="https://www.youtube-nocookie.com/embed/' + encodeURIComponent(id) +
-      '?rel=0" title="Video demostrativo de Turbo Grid" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowfullscreen loading="lazy"></iframe>';
-  })();
-</script>
 </body>
 </html>
