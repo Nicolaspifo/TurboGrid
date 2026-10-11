@@ -18,7 +18,6 @@ GameObject:
   - component: {fileID: 7890955370785695959}
   - component: {fileID: 3287104452921802386}
   - component: {fileID: 8615178377487773664}
-  - component: {fileID: 1056876005370994377}
   m_Layer: 0
   m_Name: Vehiculo_3
   m_TagString: Untagged
@@ -86,9 +85,9 @@ SpriteRenderer:
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
   m_GlobalIlluminationMeshLod: 0
-  m_SortingLayerID: 0
-  m_SortingLayer: 0
-  m_SortingOrder: 0
+  m_SortingLayerID: -324458683
+  m_SortingLayer: 3
+  m_SortingOrder: 10
   m_MaskInteraction: 0
   m_Sprite: {fileID: -711958221, guid: fd3d14805c7ef69489ae225beedf9b37, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
@@ -114,7 +113,7 @@ Rigidbody2D:
   m_UseAutoMass: 0
   m_Mass: 1
   m_LinearDamping: 0
-  m_AngularDamping: 0.05
+  m_AngularDamping: 5
   m_GravityScale: 0
   m_Material: {fileID: 0}
   m_IncludeLayers:
@@ -123,9 +122,9 @@ Rigidbody2D:
   m_ExcludeLayers:
     serializedVersion: 2
     m_Bits: 0
-  m_Interpolate: 0
+  m_Interpolate: 1
   m_SleepingMode: 1
-  m_CollisionDetection: 0
+  m_CollisionDetection: 1
   m_Constraints: 0
 --- !u!58 &3763275884912450695
 CircleCollider2D:
@@ -249,8 +248,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TurboGrid.CarController
   ShowTopMostFoldoutHeaderGroup: 1
-  baseSpeed: 6
-  rotationSpeed: 220
+  maxSpeed: 170
+  reverseSpeed: 68
+  acceleration: 220
+  brakeForce: 380
+  coastDeceleration: 120
+  turnSpeed: 170
+  fullTurnSpeedRatio: 0.35
+  lateralGrip: 0.15
 --- !u!114 &7890955370785695959
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -264,12 +269,32 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TurboGrid.PlayerNetworkData
   ShowTopMostFoldoutHeaderGroup: 1
+  Points:
+    UpdateTraits:
+      MinSecondsBetweenUpdates: 0
+      MaxSecondsBetweenUpdates: 0
+    m_InternalValue: 0
   FuelCount:
     UpdateTraits:
       MinSecondsBetweenUpdates: 0
       MaxSecondsBetweenUpdates: 0
     m_InternalValue: 0
   IsStunned:
+    UpdateTraits:
+      MinSecondsBetweenUpdates: 0
+      MaxSecondsBetweenUpdates: 0
+    m_InternalValue: 0
+  IsDrsActive:
+    UpdateTraits:
+      MinSecondsBetweenUpdates: 0
+      MaxSecondsBetweenUpdates: 0
+    m_InternalValue: 0
+  HasDrs:
+    UpdateTraits:
+      MinSecondsBetweenUpdates: 0
+      MaxSecondsBetweenUpdates: 0
+    m_InternalValue: 0
+  HasPinchazo:
     UpdateTraits:
       MinSecondsBetweenUpdates: 0
       MaxSecondsBetweenUpdates: 0
@@ -312,6 +337,21 @@ MonoBehaviour:
         byte0027: 0
         byte0028: 0
         byte0029: 0
+  SlotIndex:
+    UpdateTraits:
+      MinSecondsBetweenUpdates: 0
+      MaxSecondsBetweenUpdates: 0
+    m_InternalValue: 0
+  DrsEndTime:
+    UpdateTraits:
+      MinSecondsBetweenUpdates: 0
+      MaxSecondsBetweenUpdates: 0
+    m_InternalValue: 0
+  StunEndTime:
+    UpdateTraits:
+      MinSecondsBetweenUpdates: 0
+      MaxSecondsBetweenUpdates: 0
+    m_InternalValue: 0
 --- !u!114 &3287104452921802386
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -324,13 +364,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 67be1767110d49e4f91421013121eb20, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TurboGrid.DrsTurboAbility
-  ShowTopMostFoldoutHeaderGroup: 1
-  cooldownDuration: 0
-  ServerCooldownEndTime:
-    UpdateTraits:
-      MinSecondsBetweenUpdates: 0
-      MaxSecondsBetweenUpdates: 0
-    m_InternalValue: 0
 --- !u!114 &8615178377487773664
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -343,26 +376,3 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f50d950d5c336c042a672aa199b57828, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TurboGrid.PinchazoAbility
-  ShowTopMostFoldoutHeaderGroup: 1
-  cooldownDuration: 0
-  ServerCooldownEndTime:
-    UpdateTraits:
-      MinSecondsBetweenUpdates: 0
-      MaxSecondsBetweenUpdates: 0
-    m_InternalValue: 0
---- !u!114 &1056876005370994377
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4234990951234858203}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 85e6223d7769c3a41853eb2e2ca83bea, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::TurboGrid.PlayerLocalUIBinder
-  carController: {fileID: 6034548467757069842}
-  playerData: {fileID: 7890955370785695959}
-  drsAbility: {fileID: 3287104452921802386}
-  pinchazoAbility: {fileID: 8615178377487773664}

@@ -3,45 +3,48 @@ using UnityEngine;
 
 namespace TurboGrid
 {
-    public abstract class AbilityBase : NetworkBehaviour
+    /// <summary>
+    /// Acceso comodo a un power-up del auto (DRS o Pinchazo) para la UI.
+    /// El estado real (si lo tiene guardado, si esta activo) vive en PlayerNetworkData
+    /// y lo decide el servidor: aqui solo se lee y se pide activarlo.
+    ///
+    /// Flujo: el auto recoge el power-up en pista -> queda "cargado" -> el jugador
+    /// toca el boton -> se activa (DRS: +velocidad 3s / Pinchazo: bloquea a un rival 2s).
+    /// </summary>
+    [RequireComponent(typeof(PlayerNetworkData))]
+    public abstract class AbilityBase : MonoBehaviour
     {
-        [SerializeField] protected float cooldownDuration;
-        protected CooldownTimer LocalCooldown;
+        protected PlayerNetworkData Data;
 
-        public NetworkVariable<float> ServerCooldownEndTime = new NetworkVariable<float>(
-            0f, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
-
-        private float _serverReadyAtTime;
+        public abstract PowerUpType Type { get; }
 
         protected virtual void Awake()
         {
-            LocalCooldown = new CooldownTimer(cooldownDuration);
+            Data = GetComponent<PlayerNetworkData>();
         }
 
-        public bool CanUseLocally => LocalCooldown.IsReady;
-        public float NormalizedCooldown => LocalCooldown.NormalizedRemaining;
+        /// <summary>El jugador tiene este power-up guardado y puede usarlo.</summary>
+        public bool HasCharge =>
+            Data != null && Data.IsSpawned && (Type == PowerUpType.Drs ? Data.HasDrs.Value : Data.HasPinchazo.Value);
+
+        /// <summary>0..1 del efecto en curso (solo DRS tiene duracion propia).</summary>
+        public float ActiveNormalized
+        {
+            get
+            {
+                if (Data == null || !Data.IsSpawned || Type != PowerUpType.Drs || !Data.IsDrsActive.Value) return 0f;
+                double now = NetworkManager.Singleton != null ? NetworkManager.Singleton.ServerTime.Time : 0;
+                return Mathf.Clamp01((float)((Data.DrsEndTime.Value - now) / GameConstants.DRS_DURATION));
+            }
+        }
+
+        public bool CanUseNow =>
+            HasCharge && RaceManager.Instance != null && RaceManager.Instance.IsRacing && !Data.IsStunned.Value;
 
         public void TryActivate()
         {
-            if (!IsOwner) return;
-            if (!LocalCooldown.IsReady) return;
-
-            LocalCooldown.Trigger();
-            RequestActivateServerRpc();
+            if (!CanUseNow) return;
+            Data.RequestUsePowerUp(Type);
         }
-
-        [ServerRpc]
-        private void RequestActivateServerRpc()
-        {
-            if (Time.time < _serverReadyAtTime) return;
-
-            bool activated = TryApplyEffectOnServer();
-            if (!activated) return;
-
-            _serverReadyAtTime = Time.time + cooldownDuration;
-            ServerCooldownEndTime.Value = _serverReadyAtTime;
-        }
-
-        protected abstract bool TryApplyEffectOnServer();
     }
 }

@@ -1,51 +1,15 @@
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 namespace TurboGrid
 {
+    /// <summary>
+    /// OBSOLETO: se conserva solo porque los prefabs Vehiculo_X lo tienen agregado.
+    /// Ahora cada elemento de UI se enlaza solo con el auto local usando
+    /// PlayerNetworkData.OnLocalPlayerSpawned (HUD, botones, camara, mini-mapa)
+    /// y los controles tactiles escriben en CarInput.
+    /// Se puede quitar del prefab sin problema.
+    /// </summary>
     public class PlayerLocalUIBinder : MonoBehaviour
     {
-        [SerializeField] private CarController carController;
-        [SerializeField] private PlayerNetworkData playerData;
-        [SerializeField] private DrsTurboAbility drsAbility;
-        [SerializeField] private PinchazoAbility pinchazoAbility;
-
-        private bool _isBound;
-
-        private void OnEnable()
-        {
-            SceneManager.sceneLoaded += HandleSceneLoaded;
-        }
-
-        private void OnDisable()
-        {
-            SceneManager.sceneLoaded -= HandleSceneLoaded;
-        }
-
-        private void Start()
-        {
-            TryBindToRaceUI();
-        }
-
-        private void HandleSceneLoaded(Scene scene, LoadSceneMode mode)
-        {
-            TryBindToRaceUI();
-        }
-
-        private void TryBindToRaceUI()
-        {
-            if (_isBound) return;
-            if (!carController.IsOwner) return;
-            if (VirtualJoystick.Instance == null || HUD_RaceUI.Instance == null) return;
-
-            VirtualJoystick.Instance.BindLocalCar(carController);
-
-            if (AbilityButtonUI.AllButtons.Count > 0) AbilityButtonUI.AllButtons[0].Bind(drsAbility);
-            if (AbilityButtonUI.AllButtons.Count > 1) AbilityButtonUI.AllButtons[1].Bind(pinchazoAbility);
-
-            HUD_RaceUI.Instance.BindLocalPlayer(playerData);
-
-            _isBound = true;
-        }
     }
 }
