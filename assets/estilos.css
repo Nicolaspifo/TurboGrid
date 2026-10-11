@@ -107,6 +107,21 @@ a { color: inherit; }
 .seccion.oscura > * { max-width: 1120px; margin-left: auto; margin-right: auto; }
 .intro { text-align: center; color: var(--texto-suave); max-width: 640px; margin: 0 auto 36px; font-size: 1.1rem; }
 
+/* Video */
+.marco-video {
+  position: relative; max-width: 900px; margin: 0 auto; aspect-ratio: 16 / 9;
+  border-radius: var(--radio); overflow: hidden; border: 3px solid var(--naranja);
+  box-shadow: 0 18px 50px rgba(0,0,0,0.45); background: #000;
+}
+.marco-video iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+.video-pronto img { width: 100%; height: 100%; object-fit: cover; filter: brightness(0.45) blur(1px); display: block; }
+.video-aviso { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; gap: 8px; }
+.video-aviso p { margin: 0; font-size: 1.25rem; font-weight: 800; }
+.play {
+  display: grid; place-items: center; width: 84px; height: 84px; margin: 0 auto; border-radius: 50%;
+  background: var(--naranja); font-size: 2rem; padding-left: 6px; box-shadow: 0 6px 0 #a64d12;
+}
+
 /* Pasos */
 .pasos { list-style: none; padding: 0; margin: 0; display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
 .pasos li { background: var(--azul); border: 1px solid var(--borde); border-radius: var(--radio); padding: 22px; position: relative; }

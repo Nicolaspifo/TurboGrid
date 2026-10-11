@@ -19,6 +19,7 @@
 <header class="barra">
   <a class="marca" href="#inicio"><img src="assets/img/icono.png" alt="" width="36" height="36"> Turbo Grid</a>
   <nav>
+    <a href="#video">Video</a>
     <a href="#como-se-juega">Cómo se juega</a>
     <a href="#power-ups">Power-ups</a>
     <a href="#controles">Controles</a>
@@ -38,6 +39,19 @@
     <div class="botones">
       <a class="boton principal" href="https://github.com/Nicolaspifo/TurboGrid/releases">Descargar para Android</a>
       <a class="boton" href="https://github.com/Nicolaspifo/TurboGrid">Ver el código</a>
+    </div>
+  </div>
+</section>
+
+<!-- VIDEO: pega el ID de YouTube en data-youtube (lo que va despues de "v=" en el link).
+     Ejemplo: https://www.youtube.com/watch?v=AbCdEf12345  ->  data-youtube="AbCdEf12345" -->
+<section id="video" class="seccion video" data-youtube="">
+  <h2>Mira una carrera</h2>
+  <p class="intro">Partida completa con varios pilotos: salida desde la parrilla, gasolina, DRS, pinchazos y el ganador.</p>
+  <div class="marco-video">
+    <div class="video-pronto">
+      <img src="assets/img/pantalla-carrera.jpg" alt="" loading="lazy">
+      <div class="video-aviso"><span class="play">▶</span><p>Video demostrativo<br><b>muy pronto</b></p></div>
     </div>
   </div>
 </section>
@@ -149,5 +163,16 @@
   <p>Equipo: Programación · Interfaz (UI/UX) · Diseño de Mapas y Personajes</p>
 </footer>
 
+<script>
+  // Si hay un ID de YouTube, reemplaza el aviso "muy pronto" por el video.
+  (function () {
+    var seccion = document.getElementById("video");
+    var id = (seccion.getAttribute("data-youtube") || "").trim();
+    if (!id) return;
+    var marco = seccion.querySelector(".marco-video");
+    marco.innerHTML = '<iframe src="https://www.youtube-nocookie.com/embed/' + encodeURIComponent(id) +
+      '?rel=0" title="Video demostrativo de Turbo Grid" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowfullscreen loading="lazy"></iframe>';
+  })();
+</script>
 </body>
 </html>
