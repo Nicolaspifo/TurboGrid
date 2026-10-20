@@ -33,8 +33,9 @@ Teclado para probar en el editor: **flechas / WASD** para manejar, **E o Espacio
 
 | Pieza | Qué hace |
 |---|---|
-| **Netcode for GameObjects 2.x + Unity Relay** | Un celular es *Host* (servidor + jugador); los demás se unen con un código de 6 letras. Va por internet, así que iOS y Android juegan juntos. |
-| `RelayManager` | Inicia sesión anónima en Unity Services, crea o se une a la sala de Relay. En el editor usa un perfil distinto por proceso para que las ventanas de Multiplayer Play Mode no compartan el mismo usuario. |
+| **Netcode for GameObjects 2.x + red local (LAN)** | Un celular es *Host* (servidor + jugador); los demás se unen con un código de 6 letras. Funciona 100% offline: los dispositivos solo deben estar en la misma red (WiFi), sin internet. |
+| `RelayManager` | Genera el código de la partida, configura el transporte para escuchar en todas las interfaces (`0.0.0.0`) e inicia el host o el cliente. No usa Unity Services ni la nube. |
+| `LanDiscovery` | Resuelve el código → IP del host dentro de la red local con UDP broadcast (puerto 47777). El host responde solo si el código coincide; el cliente envía la pregunta por broadcast (y loopback, para probar en el mismo equipo). |
 | `GameNetworkManager` | Aprobación de conexiones (máx. 4; no se entra con la carrera empezada), envío del nombre del piloto en el payload de conexión, arranque de la carrera y regreso al menú cuando se cae la conexión. |
 | `SessionState` (prefab) | Lista de pilotos de la sala (nombre + color/slot 0-3) y mapa elegido. Lo crea el host y sobrevive a los cambios de escena. |
 
@@ -96,7 +97,7 @@ Solo se ofrecen los que estén en Build Settings.
 
 ```
 Assets/Scripts/
-  Network/   RelayManager, GameNetworkManager, SessionState, PlayerNetworkData
+  Network/   RelayManager, LanDiscovery, GameNetworkManager, SessionState, PlayerNetworkData
   Gameplay/  RaceManager, SpawnGridManager, FuelSpawner, FuelToken, PowerUpSpawner, PowerUpPickup,
              CarController, CarInput, CarVisuals, CameraFollow, Abilities/*
   UI/        LobbyUI, HUD_RaceUI, MinimapUI, EndRaceUI, ControlsUI, HoldButton, SteeringWheel,

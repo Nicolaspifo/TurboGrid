@@ -1,35 +1,39 @@
 using System;
+using System.Security.Cryptography;
 using System.Threading.Tasks;
 using Unity.Netcode;
 using Unity.Netcode.Transports.UTP;
-using Unity.Networking.Transport.Relay;
-using Unity.Services.Authentication;
-using Unity.Services.Core;
-using Unity.Services.Relay;
-using Unity.Services.Relay.Models;
 using UnityEngine;
 
 namespace TurboGrid
 {
     /// <summary>
-    /// Encapsula todo lo relacionado con Unity Relay: el celular que crea la partida
-    /// se convierte en Host (servidor + cliente local), y el resto se conectan
-    /// como clientes usando el codigo de union (join code) de 6 caracteres.
-    /// Funciona igual entre iOS y Android porque va por internet.
+    /// Gestion de la sesion de juego en la red local (LAN, 100% offline).
     ///
-    /// Requiere el proyecto vinculado en Unity Cloud con Relay activado.
+    /// El movil que crea la partida se convierte en Host (servidor + cliente
+    /// local) y genera un codigo de 6 letras; el resto se unen con ese codigo.
+    /// La IP del host se resuelve automaticamente dentro de la misma red con
+    /// LanDiscovery (UDP broadcast), sin internet y sin servicios en la nube.
+    ///
+    /// (El nombre de la clase se mantiene por compatibilidad con la escena
+    /// MainMenu, que lo referencia como componente.)
     /// </summary>
     public class RelayManager : MonoBehaviour
     {
         public static RelayManager Instance { get; private set; }
 
-        [SerializeField] private string connectionType = "dtls"; // "dtls" = seguro; "udp" para pruebas
-        [SerializeField] private int maxConnections = GameConstants.MAX_PLAYERS - 1; // el host no cuenta
+        [Tooltip("Puerto UDP en el que el host escucha las conexiones de la partida.")]
+        [SerializeField] private int gamePort = 7777;
+
+        [Tooltip("Segundos que el cliente busca al host en la red antes de rendirse.")]
+        [SerializeField] private float joinTimeoutSeconds = 8f;
 
         public string CurrentJoinCode { get; private set; }
         public string LastError { get; private set; }
 
-        private Task _signInTask;
+        // Alfabeto del codigo sin caracteres confusos (sin O/0 ni I/1).
+        private const string CodeAlphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+        private const int CodeLength = 6;
 
         private void Awake()
         {
@@ -45,110 +49,111 @@ namespace TurboGrid
         private void OnDestroy()
         {
             if (Instance == this) Instance = null;
-        }
-
-        /// <summary>
-        /// Inicializa Unity Services e inicia sesion anonima. Es seguro llamarlo varias
-        /// veces: todas esperan la misma tarea.
-        /// </summary>
-        public Task EnsureSignedInAsync()
-        {
-            if (_signInTask == null || _signInTask.IsFaulted || _signInTask.IsCanceled)
-                _signInTask = SignInInternalAsync();
-            return _signInTask;
-        }
-
-        private async Task SignInInternalAsync()
-        {
-            if (UnityServices.State != ServicesInitializationState.Initialized)
-            {
-                var options = new InitializationOptions();
-#if UNITY_EDITOR
-                // En el editor (y en las ventanas de Multiplayer Play Mode) cada proceso
-                // necesita su propio perfil; si no, todos comparten el mismo PlayerId.
-                options.SetProfile("editor" + System.Diagnostics.Process.GetCurrentProcess().Id);
-#endif
-                await UnityServices.InitializeAsync(options);
-            }
-
-            if (!AuthenticationService.Instance.IsSignedIn)
-                await AuthenticationService.Instance.SignInAnonymouslyAsync();
-
-            Debug.Log($"[RelayManager] Sesion iniciada. PlayerId: {AuthenticationService.Instance.PlayerId}");
+            LanDiscovery.StopHostResponder();
         }
 
         /// <summary>
         /// El movil que llama esto se convierte en HOST. Devuelve el join code o null si fallo
         /// (el motivo queda en LastError).
         /// </summary>
-        public async Task<string> StartHostWithRelayAsync()
+        public Task<string> StartHostAsync()
         {
             LastError = null;
             try
             {
-                await EnsureSignedInAsync();
+                var nm = NetworkManager.Singleton;
+                if (nm == null)
+                {
+                    LastError = "Falta el NetworkManager en la escena.";
+                    return Task.FromResult<string>(null);
+                }
 
-                Allocation allocation = await RelayService.Instance.CreateAllocationAsync(maxConnections);
-                CurrentJoinCode = await RelayService.Instance.GetJoinCodeAsync(allocation.AllocationId);
+                var transport = nm.GetComponent<UnityTransport>();
+                if (transport == null)
+                {
+                    LastError = "Falta el transporte de red en la escena.";
+                    return Task.FromResult<string>(null);
+                }
 
-                var transport = NetworkManager.Singleton.GetComponent<UnityTransport>();
-                transport.SetRelayServerData(allocation.ToRelayServerData(connectionType));
+                // Escucha en TODAS las interfaces (0.0.0.0) para que otros
+                // dispositivos de la red local puedan alcanzar el host.
+                transport.SetConnectionData("127.0.0.1", (ushort)gamePort, "0.0.0.0");
+
+                CurrentJoinCode = GenerateJoinCode();
+                LanDiscovery.StartHostResponder(CurrentJoinCode, gamePort);
 
                 GameNetworkManager.Instance?.PrepareLocalConnection();
 
-                if (!NetworkManager.Singleton.StartHost())
+                if (!nm.StartHost())
                 {
+                    LanDiscovery.StopHostResponder();
+                    CurrentJoinCode = null;
                     LastError = "No se pudo iniciar el host.";
-                    return null;
+                    return Task.FromResult<string>(null);
                 }
 
-                Debug.Log($"[RelayManager] Host iniciado. Join code: {CurrentJoinCode}");
-                return CurrentJoinCode;
+                Debug.Log($"[RelayManager] Host iniciado en la red local (puerto {gamePort}). Codigo: {CurrentJoinCode}");
+                return Task.FromResult(CurrentJoinCode);
             }
             catch (Exception e)
             {
-                LastError = "Error de red al crear la partida. Revisa tu conexion a internet.";
+                LanDiscovery.StopHostResponder();
+                CurrentJoinCode = null;
+                LastError = "No se pudo crear la partida en la red local.";
                 Debug.LogError($"[RelayManager] Error creando la partida: {e}");
-                return null;
+                return Task.FromResult<string>(null);
             }
         }
 
         /// <summary>
         /// Los demas moviles llaman esto con el codigo que les paso el host.
+        /// Busca al host en la red local y se conecta directamente a el.
         /// </summary>
-        public async Task<bool> JoinWithRelayAsync(string joinCode)
+        public async Task<bool> JoinAsync(string joinCode)
         {
             LastError = null;
             try
             {
-                await EnsureSignedInAsync();
+                var nm = NetworkManager.Singleton;
+                if (nm == null)
+                {
+                    LastError = "Falta el NetworkManager en la escena.";
+                    return false;
+                }
 
-                JoinAllocation joinAllocation = await RelayService.Instance.JoinAllocationAsync(joinCode);
+                var transport = nm.GetComponent<UnityTransport>();
+                if (transport == null)
+                {
+                    LastError = "Falta el transporte de red en la escena.";
+                    return false;
+                }
 
-                var transport = NetworkManager.Singleton.GetComponent<UnityTransport>();
-                transport.SetRelayServerData(joinAllocation.ToRelayServerData(connectionType));
+                LanHostInfo? host = await LanDiscovery.FindHostAsync(joinCode, joinTimeoutSeconds);
+                if (this == null) return false; // la escena cambio mientras buscamos
+
+                if (host == null)
+                {
+                    LastError = "No se encontro ninguna partida con ese codigo en esta red.";
+                    return false;
+                }
+
+                transport.SetConnectionData(host.Value.Address, (ushort)host.Value.Port);
 
                 GameNetworkManager.Instance?.PrepareLocalConnection();
 
-                if (!NetworkManager.Singleton.StartClient())
+                if (!nm.StartClient())
                 {
                     LastError = "No se pudo iniciar el cliente.";
                     return false;
                 }
 
-                CurrentJoinCode = joinCode;
-                Debug.Log("[RelayManager] Conectando a la partida...");
+                CurrentJoinCode = joinCode != null ? joinCode.Trim().ToUpperInvariant() : null;
+                Debug.Log($"[RelayManager] Conectando al host {host.Value.Address}:{host.Value.Port}...");
                 return true;
-            }
-            catch (RelayServiceException e)
-            {
-                LastError = "Codigo invalido o la sala ya no existe.";
-                Debug.LogWarning($"[RelayManager] Codigo invalido o error al unirse: {e}");
-                return false;
             }
             catch (Exception e)
             {
-                LastError = "Error de red al unirse. Revisa tu conexion a internet.";
+                LastError = "No se pudo conectar con el host en la red local.";
                 Debug.LogError($"[RelayManager] Error al unirse: {e}");
                 return false;
             }
@@ -156,9 +161,27 @@ namespace TurboGrid
 
         public void Shutdown()
         {
+            LanDiscovery.StopHostResponder();
             if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsListening)
                 NetworkManager.Singleton.Shutdown();
             CurrentJoinCode = null;
+        }
+
+        /// <summary>
+        /// Genera un codigo de 6 letras/numeros aleatorios (sin caracteres
+        /// confusos) usando el RNG criptografico del sistema.
+        /// </summary>
+        private static string GenerateJoinCode()
+        {
+            char[] chars = new char[CodeLength];
+            byte[] bytes = new byte[CodeLength];
+            using (var rng = RandomNumberGenerator.Create())
+            {
+                rng.GetBytes(bytes);
+            }
+            for (int i = 0; i < CodeLength; i++)
+                chars[i] = CodeAlphabet[bytes[i] % CodeAlphabet.Length];
+            return new string(chars);
         }
     }
 }

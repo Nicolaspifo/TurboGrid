@@ -3705,8 +3705,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0bd35bd585e01c548946644055371c1c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TurboGrid.RelayManager
-  connectionType: dtls
-  maxConnections: 3
+  gamePort: 7777
+  joinTimeoutSeconds: 8
 --- !u!4 &651438042
 Transform:
   m_ObjectHideFlags: 0
@@ -8298,7 +8298,7 @@ MonoBehaviour:
     Address: 127.0.0.1
     Port: 7777
     WebSocketPath: /
-    ServerListenAddress: 127.0.0.1
+    ServerListenAddress: 0.0.0.0
     ClientBindPort: 0
   DebugSimulator:
     PacketDelayMS: 0

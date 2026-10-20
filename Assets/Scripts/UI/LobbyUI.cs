@@ -115,7 +115,7 @@ namespace TurboGrid
             ShowSala(false);
         }
 
-        private async void Start()
+        private void Start()
         {
             // Mensaje pendiente de una partida anterior (host se fue, sala llena, etc.)
             string reason = GameNetworkManager.LastDisconnectReason;
@@ -125,12 +125,6 @@ namespace TurboGrid
             else SetStatus("Crea una partida o unete con un codigo");
 
             RefreshOptionsTexts();
-
-            if (RelayManager.Instance != null)
-            {
-                try { await RelayManager.Instance.EnsureSignedInAsync(); }
-                catch (System.Exception e) { Debug.LogWarning($"[LobbyUI] No se pudo iniciar sesion todavia: {e.Message}"); }
-            }
         }
 
         private void OnEnable()
@@ -183,9 +177,9 @@ namespace TurboGrid
             if (RelayManager.Instance == null) { SetStatus("Falta RelayManager en la escena."); return; }
 
             SetStage(LobbyStage.Busy);
-            SetStatus("Creando partida...");
+            SetStatus("Creando partida en la red local...");
 
-            string joinCode = await RelayManager.Instance.StartHostWithRelayAsync();
+            string joinCode = await RelayManager.Instance.StartHostAsync();
             if (this == null) return; // la escena cambio mientras esperabamos
 
             if (string.IsNullOrEmpty(joinCode))
@@ -213,9 +207,9 @@ namespace TurboGrid
             }
 
             SetStage(LobbyStage.Busy);
-            SetStatus("Uniendose...");
+            SetStatus("Buscando la partida en la red local...");
 
-            bool success = await RelayManager.Instance.JoinWithRelayAsync(code);
+            bool success = await RelayManager.Instance.JoinAsync(code);
             if (this == null) return;
 
             if (!success)
