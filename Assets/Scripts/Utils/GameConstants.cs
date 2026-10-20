@@ -17,7 +17,7 @@ namespace TurboGrid
 
         // Gasolina
         public const int TOTAL_FUEL_TOKENS = 50;
-        public const int POINTS_PER_FUEL = 20;
+        public const int POINTS_PER_FUEL = 10;
         public const float FUEL_RESPAWN_SECONDS = 1f;
         public const float FUEL_PICKUP_RADIUS = 40f;     // unidades de mundo (la pista mide ~1385 x 795)
 

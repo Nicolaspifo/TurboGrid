@@ -1497,9 +1497,9 @@ namespace TurboGrid.EditorTools
             var cardsData = new (string title, string body, Sprite icon)[]
             {
                 ("MANEJA", "Flechas, timón o joystick: elígelo en Opciones", S("PANTALLA JUGABILIDAD/Joystick_Parte1.png") ?? LoadSprite(iconos, "Iconos_1")),
-                ("GASOLINA", "Cada bidón suma 20 pts y reaparece a los 10 s", S("PANTALLA JUGABILIDAD/Item_gasolina.png") ?? LoadSprite(iconos, "Iconos_0")),
+                ("GASOLINA", "Cada bidón suma 10 pts y reaparece a los 10 s", S("PANTALLA JUGABILIDAD/Item_gasolina.png") ?? LoadSprite(iconos, "Iconos_0")),
                 ("DRS", "Recógelo en la pista y úsalo: +velocidad por 3 s", S("PANTALLA JUGABILIDAD/Boton_velocidad.png") ?? LoadSprite(iconos, "Iconos_2")),
-                ("PINCHAZO", "Deja quieto 2 s a un rival al azar", S("PANTALLA JUGABILIDAD/Boton_poder.png") ?? LoadSprite(iconos, "Iconos_4")),
+                ("PINCHAZO", "Deja quieto 2 s al rival con más puntos", S("PANTALLA JUGABILIDAD/Boton_poder.png") ?? LoadSprite(iconos, "Iconos_4")),
                 ("¡GANA!", "Llega a 1000 pts o ten más puntos al acabar los 3:00", S("PANTALLA6/Elemento_1.png")),
             };
 
