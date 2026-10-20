@@ -5,7 +5,7 @@ namespace TurboGrid
 {
     /// <summary>
     /// Bidon de gasolina. El SERVIDOR detecta por distancia que un auto lo toco,
-    /// suma 20 puntos, lo oculta y lo hace reaparecer 10 segundos despues en el
+    /// suma 10 puntos, lo oculta y lo hace reaparecer 10 segundos despues en el
     /// mismo lugar. La deteccion por distancia (y no por triggers de fisica) es
     /// fiable aunque los autos remotos sean Kinematic en el servidor.
     /// </summary>

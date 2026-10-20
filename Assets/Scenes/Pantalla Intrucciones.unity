@@ -1641,7 +1641,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Deja quieto 2 s a un rival al azar
+  m_text: Deja quieto 2 s al rival con m\xe1s puntos
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 35c52e823872abc4e86664e2a9e563cc, type: 2}
   m_sharedMaterial: {fileID: -4919882542898950757, guid: 35c52e823872abc4e86664e2a9e563cc, type: 2}
@@ -3602,7 +3602,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "Cada bid\xF3n suma 20 pts y reaparece a los 10 s"
+  m_text: "Cada bid\xF3n suma 10 pts y reaparece a los 10 s"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 35c52e823872abc4e86664e2a9e563cc, type: 2}
   m_sharedMaterial: {fileID: -4919882542898950757, guid: 35c52e823872abc4e86664e2a9e563cc, type: 2}

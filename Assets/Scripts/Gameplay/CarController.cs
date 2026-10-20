@@ -159,7 +159,13 @@ namespace TurboGrid
             if (scheme == ControlScheme.Joystick && !CarInput.KeyboardActive)
             {
                 // El auto gira hacia donde apunta el stick y acelera segun la inclinacion.
+                // El stick viene en espacio de PANTALLA (arriba = arriba en la UI), pero el
+                // angulo del auto se mide en espacio de MUNDO: hay que rotarlo segun la
+                // camara (que gira con el auto) para que "arriba del stick" siempre sea
+                // "adelante del auto".
                 Vector2 dir = CarInput.JoystickDirection;
+                dir = ScreenToWorldDirection(dir);
+
                 float magnitude = Mathf.Clamp01(dir.magnitude);
                 if (magnitude < 0.15f)
                 {
@@ -177,6 +183,15 @@ namespace TurboGrid
 
             throttle = CarInput.Throttle;
             steer = CarInput.Steer;
+        }
+
+        /// <summary>Convierte una direccion de pantalla (UI) a direccion de mundo
+        /// usando la rotacion Z de la camara principal.</summary>
+        private static Vector2 ScreenToWorldDirection(Vector2 screenDirection)
+        {
+            Camera cam = Camera.main;
+            if (cam == null) return screenDirection;
+            return (Vector2)(Quaternion.Euler(0f, 0f, cam.transform.eulerAngles.z) * (Vector3)screenDirection);
         }
     }
 }

@@ -70,10 +70,10 @@ Circuito (Game / Circuito2 / Circuito3)
 | Mecánica | Script | Detalle |
 |---|---|---|
 | Parrilla aleatoria | `SpawnGridManager`, `RaceManager.SpawnCarsServer` | 4 casillas fijas (`StartGrid/Posicion1-4`), barajadas cada carrera. La rotación de la casilla define hacia dónde mira el auto. |
-| Gasolina | `FuelSpawner`, `FuelToken` | 50 bidones en puntos de `TrackWaypoints`. El servidor detecta la recogida por distancia, suma **20 pts** y el bidón **reaparece a los 10 s** en el mismo lugar. |
+| Gasolina | `FuelSpawner`, `FuelToken` | 50 bidones en puntos de `TrackWaypoints`. El servidor detecta la recogida por distancia, suma **10 pts** y el bidón **reaparece a los 10 s** en el mismo lugar. |
 | Power-ups en pista | `PowerUpSpawner`, `PowerUpPickup` | Siempre hay 1 DRS y 1 Pinchazo en pista. Al recogerlo queda guardado (botón encendido); tras recogerlo reaparece en otro punto a los 8 s. |
 | DRS | `PlayerNetworkData.UsePowerUpRpc`, `CarController` | ×1.6 de velocidad máxima durante **3 s**; estela azul. |
-| Pinchazo | `PlayerNetworkData.PickRandomRivalServer` | Bloquea **2 s** a un rival **al azar** (nunca a quien lo lanza); el auto parpadea en morado. |
+| Pinchazo | `PlayerNetworkData.PickLeaderRivalServer` | Bloquea **2 s** al rival **con más puntos** (nunca a quien lo lanza); el auto parpadea en morado. |
 | Puntaje y victoria | `PlayerNetworkData.AddFuelServer`, `RaceManager` | 1000 pts = victoria instantánea; si no, al acabar 3:00 gana el de más puntos (desempate: más gasolina). |
 | Controles por jugador | `LocalPlayerSettings`, `ControlsUI`, `CarInput` | Flechas (girar + gas/freno), Timón (arrastrar + gas/freno) o Joystick. Se guarda en el celular (PlayerPrefs). |
 | Cámara | `CameraFollow` | Sigue al auto local con un pequeño adelanto y zoom según la velocidad. |

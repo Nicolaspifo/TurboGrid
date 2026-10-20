@@ -226,7 +226,7 @@ namespace TurboGrid
             else
             {
                 if (!HasPinchazo.Value) return;
-                PlayerNetworkData target = PickRandomRivalServer();
+                PlayerNetworkData target = PickLeaderRivalServer();
                 if (target == null) return; // no hay rivales: se conserva el power-up
                 HasPinchazo.Value = false;
                 target.SetStunnedServer(true, GameConstants.PINCHAZO_STUN_DURATION);
@@ -234,24 +234,20 @@ namespace TurboGrid
             }
         }
 
-        private PlayerNetworkData PickRandomRivalServer()
+        /// <summary>
+        /// El rival con MAS puntos de la partida (nunca quien lo lanza).
+        /// Si ya estaba pinchado, solo se refresca el bloqueo.
+        /// </summary>
+        private PlayerNetworkData PickLeaderRivalServer()
         {
-            var rivals = new List<PlayerNetworkData>();
+            PlayerNetworkData leader = null;
             foreach (var p in All)
             {
                 if (p == null || p == this || !p.IsSpawned) continue;
                 if (p.OwnerClientId == OwnerClientId) continue;
-                if (p.IsStunned.Value) continue; // no pinchar dos veces al mismo
-                rivals.Add(p);
+                if (leader == null || p.Points.Value > leader.Points.Value) leader = p;
             }
-            if (rivals.Count == 0)
-            {
-                // Si todos estan bloqueados, se permite repetir.
-                foreach (var p in All)
-                    if (p != null && p != this && p.IsSpawned && p.OwnerClientId != OwnerClientId)
-                        rivals.Add(p);
-            }
-            return rivals.Count == 0 ? null : rivals[UnityEngine.Random.Range(0, rivals.Count)];
+            return leader;
         }
 
         [Rpc(SendTo.ClientsAndHost)]
