@@ -44,17 +44,44 @@
 </section>
 
 <section id="video" class="seccion video">
-  <div class="video-grid">
-    <div class="telefono">
-      <video src="assets/video/promo_720.mp4" poster="assets/video/poster.jpg" controls playsinline preload="metadata"></video>
-    </div>
-    <div class="video-texto">
-      <p class="etiqueta">Video promocional</p>
-      <h2>Mira Turbo Grid en acción</h2>
-      <p>60 segundos de carrera: la salida desde la parrilla, la gasolina, el DRS, los pinchazos y el ganador.</p>
-      <p class="pista">Toca ▶ para verlo con sonido.</p>
+  <div class="video-cabecera">
+    <p class="etiqueta">Video promocional</p>
+    <h2>Mira Turbo Grid en acción</h2>
+    <p>60 segundos: el Gran Premio, los 5 poderes, el derrape, el pasto y la carrera en red local.</p>
+    <div class="formatos" role="group" aria-label="Formato del video">
+      <button type="button" class="formato activo" data-formato="horizontal" aria-pressed="true">Horizontal 16:9</button>
+      <button type="button" class="formato" data-formato="vertical" aria-pressed="false">Vertical 9:16</button>
     </div>
   </div>
+  <div class="video-marcos">
+    <div class="pantalla" data-video="horizontal">
+      <video src="assets/video/promo_horizontal.mp4" poster="assets/video/poster_horizontal.jpg" controls playsinline preload="metadata"></video>
+    </div>
+    <div class="telefono" data-video="vertical" hidden>
+      <video src="assets/video/promo_vertical.mp4" poster="assets/video/poster_vertical.jpg" controls playsinline preload="metadata"></video>
+    </div>
+  </div>
+  <p class="pista">Toca ▶ para verlo con sonido.</p>
+  <script>
+    (function () {
+      var botones = document.querySelectorAll('.formato');
+      function elegir(formato) {
+        botones.forEach(function (b) {
+          var on = b.getAttribute('data-formato') === formato;
+          b.classList.toggle('activo', on);
+          b.setAttribute('aria-pressed', on ? 'true' : 'false');
+        });
+        document.querySelectorAll('[data-video]').forEach(function (m) {
+          var on = m.getAttribute('data-video') === formato;
+          if (!on) { var v = m.querySelector('video'); if (v) v.pause(); }
+          m.hidden = !on;
+        });
+      }
+      botones.forEach(function (b) { b.addEventListener('click', function () { elegir(b.getAttribute('data-formato')); }); });
+      // En celulares en vertical se muestra primero el video vertical.
+      if (window.matchMedia && window.matchMedia('(max-width: 720px) and (orientation: portrait)').matches) elegir('vertical');
+    })();
+  </script>
 </section>
 
 <section id="como-se-juega" class="seccion">

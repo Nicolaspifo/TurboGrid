@@ -107,21 +107,29 @@ a { color: inherit; }
 .seccion.oscura > * { max-width: 1120px; margin-left: auto; margin-right: auto; }
 .intro { text-align: center; color: var(--texto-suave); max-width: 640px; margin: 0 auto 36px; font-size: 1.1rem; }
 
-/* Video promocional (vertical, en marco de celular) */
-.video-grid { display: grid; grid-template-columns: minmax(0, 340px) minmax(0, 1fr); gap: 48px; align-items: center; max-width: 900px; margin: 0 auto; }
+/* Video promocional: horizontal (16:9) o vertical (9:16, en marco de celular) */
+.video-cabecera { text-align: center; max-width: 760px; margin: 0 auto 28px; }
+.video-cabecera p { color: var(--texto-suave); font-size: 1.15rem; margin: 0 0 12px; }
+.formatos { display: inline-flex; gap: 6px; padding: 6px; border-radius: 999px; background: rgba(7, 22, 52, 0.7); border: 2px solid var(--borde); margin-top: 8px; }
+.formato { font: inherit; font-weight: 800; color: var(--texto-suave); background: transparent; border: 0; border-radius: 999px; padding: 10px 20px; cursor: pointer; }
+.formato.activo { background: var(--naranja); color: #fff; box-shadow: 0 4px 0 #a64d12; }
+.formato:focus-visible { outline: 3px solid var(--amarillo); outline-offset: 2px; }
+.video-marcos { display: flex; justify-content: center; }
+.pantalla {
+  width: min(960px, 100%); aspect-ratio: 16 / 9; border-radius: 22px; overflow: hidden; background: #000;
+  border: 8px solid #020814; box-shadow: 0 0 0 3px var(--naranja), 0 24px 60px rgba(0,0,0,0.55);
+}
+.pantalla video { width: 100%; height: 100%; display: block; object-fit: cover; }
 .telefono {
-  aspect-ratio: 9 / 16; border-radius: 34px; overflow: hidden; background: #000;
+  width: min(340px, 82vw); aspect-ratio: 9 / 16; border-radius: 34px; overflow: hidden; background: #000;
   border: 8px solid #020814; box-shadow: 0 0 0 3px var(--naranja), 0 24px 60px rgba(0,0,0,0.55);
 }
 .telefono video { width: 100%; height: 100%; display: block; object-fit: cover; }
-.video-texto h2 { text-align: left; }
-.video-texto p { color: var(--texto-suave); font-size: 1.15rem; margin: 0 0 12px; }
+.video .pista { text-align: center; margin: 18px 0 0; }
 .etiqueta { color: var(--naranja) !important; font-weight: 800; letter-spacing: 0.15em; text-transform: uppercase; font-size: 0.95rem !important; }
 .pista { font-weight: 700; color: var(--amarillo) !important; }
 @media (max-width: 720px) {
-  .video-grid { grid-template-columns: 1fr; gap: 22px; justify-items: center; }
-  .telefono { width: min(320px, 82vw); }
-  .video-texto, .video-texto h2 { text-align: center; }
+  .pantalla { border-width: 5px; border-radius: 14px; }
 }
 
 /* Pasos */
