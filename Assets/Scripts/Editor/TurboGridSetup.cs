@@ -1492,16 +1492,17 @@ namespace TurboGrid.EditorTools
 
             var cardsData = new (string title, string body, Sprite icon)[]
             {
-                ("MANEJA", "Flechas, timón o joystick: elígelo en Opciones", S("PANTALLA JUGABILIDAD/Joystick_Parte1.png") ?? LoadSprite(iconos, "Iconos_1")),
-                ("GASOLINA", "Cada bidón suma 10 pts y reaparece a los 10 s", S("PANTALLA JUGABILIDAD/Item_gasolina.png") ?? LoadSprite(iconos, "Iconos_0")),
-                ("DRS", "Recógelo en la pista y úsalo: +velocidad por 3 s", S("PANTALLA JUGABILIDAD/Boton_velocidad.png") ?? LoadSprite(iconos, "Iconos_2")),
-                ("PINCHAZO", "Deja quieto 2 s al rival con más puntos", S("PANTALLA JUGABILIDAD/Boton_poder.png") ?? LoadSprite(iconos, "Iconos_4")),
+                ("MANEJA", "Flechas, timón o joystick (Opciones). En el pasto frenas y en curvas fuertes derrapas", S("PANTALLA JUGABILIDAD/Joystick_Parte1.png") ?? LoadSprite(iconos, "Iconos_1")),
+                ("GASOLINA", "Cada bidón suma 10 pts y reaparece en 1 s", S("PANTALLA JUGABILIDAD/Item_gasolina.png") ?? LoadSprite(iconos, "Iconos_0")),
+                ("DRS", "Recógelo y tócalo: +velocidad por 3 s", S("PANTALLA JUGABILIDAD/Boton_velocidad.png") ?? LoadSprite(iconos, "Iconos_2")),
+                ("PINCHAZO", "Deja quieto 2 s al líder. El Escudo lo bloquea", S("PANTALLA JUGABILIDAD/Boton_poder.png") ?? LoadSprite(iconos, "Iconos_4")),
+                ("PODERES", "Escudo (8 s), Imán atrae gasolina (6 s) y Puntos x2 (8 s): se activan solos", S("PANTALLA JUGABILIDAD/Boton_escudo.png") ?? LoadSprite(iconos, "Iconos_2")),
                 ("¡GANA!", "Llega a 1000 pts o ten más puntos al acabar los 3:00", S("PANTALLA6/Elemento_1.png")),
             };
 
             var cards = new RectTransform[cardsData.Length];
             var icons = new RectTransform[cardsData.Length];
-            const float cardW = 146f, cardH = 215f, spacing = 156f;
+            const float cardW = 120f, cardH = 215f, spacing = 128f; // 6 tarjetas caben en 800 px
             for (int i = 0; i < cardsData.Length; i++)
             {
                 float x = (i - (cardsData.Length - 1) / 2f) * spacing;
@@ -1521,9 +1522,12 @@ namespace TurboGrid.EditorTools
 
                 var chip = MakeImage(card.transform, "Etiqueta", box, Color.white);
                 chip.raycastTarget = false;
-                SetRect(chip.rectTransform, Center, Center, Center, new Vector2(0f, 4f), new Vector2(128f, 32f));
+                SetRect(chip.rectTransform, Center, Center, Center, new Vector2(0f, 4f), new Vector2(cardW - 8f, 32f));
                 var chipText = MakeText(chip.transform, "Texto", cardsData[i].title, 15, TextAlignmentOptions.Center, new Color(1f, 0.82f, 0.3f));
                 Stretch(chipText.rectTransform);
+                chipText.enableAutoSizing = true;
+                chipText.fontSizeMin = 10;
+                chipText.fontSizeMax = 15;
 
                 var body = MakeText(card.transform, "Descripcion", cardsData[i].body, 12, TextAlignmentOptions.Top, Color.white);
                 SetRect(body.rectTransform, Bottom, Bottom, Bottom, new Vector2(0f, 10f), new Vector2(cardW - 16f, 82f));

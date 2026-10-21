@@ -70,6 +70,7 @@ namespace TurboGrid.EditorTools
             Log.Clear();
             try
             {
+                _font = LoadFont();
                 MakeReadable(PISTA_VIEJA);
                 MakeReadable(PISTA_KEVIN);
                 WriteSpriteIfMissing(GENERATED + "Degradado.png", DrawVerticalGradient(8, 128));
@@ -87,6 +88,13 @@ namespace TurboGrid.EditorTools
 
                 BuildGranPremio();
                 LayoutStartScreen();
+                if (File.Exists(INSTRUCCIONES))
+                {
+                    var instr = EditorSceneManager.OpenScene(INSTRUCCIONES, OpenSceneMode.Single);
+                    BuildInstructions();
+                    SaveScene(instr);
+                    Log.Add("Instrucciones: reglas actualizadas (10 pts, 1 s, lider, 3 poderes nuevos, pasto y derrape).");
+                }
                 UpdateBuildSettingsV2();
                 AssetDatabase.SaveAssets();
             }

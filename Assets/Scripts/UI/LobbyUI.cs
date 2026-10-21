@@ -189,7 +189,12 @@ namespace TurboGrid
                 return;
             }
 
-            if (joinCodeDisplayText != null) joinCodeDisplayText.text = $"CODIGO: <color=#FFD54F>{joinCode}</color>";
+            if (joinCodeDisplayText != null)
+            {
+                string ip = RelayManager.Instance.HostAddress;
+                joinCodeDisplayText.text = $"CODIGO: <color=#FFD54F>{joinCode}</color>" +
+                    (string.IsNullOrEmpty(ip) ? "" : $"  <size=55%><color=#B0BEC5>Wi-Fi {ip}</color></size>");
+            }
             SetStage(LobbyStage.Hosting);
             ShowSala(true);
         }

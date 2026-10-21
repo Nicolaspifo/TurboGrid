@@ -31,9 +31,21 @@ namespace TurboGrid
         public string CurrentJoinCode { get; private set; }
         public string LastError { get; private set; }
 
-        // Alfabeto del codigo sin caracteres confusos (sin O/0 ni I/1).
-        private const string CodeAlphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-        private const int CodeLength = 6;
+        [Tooltip("Segundos sin noticias del otro lado para dar la conexion por perdida (antes 30 s).")]
+        [SerializeField] private int disconnectTimeoutMs = 6000;
+
+        /// <summary>IP local del host (para mostrarla en la Sala).</summary>
+        public string HostAddress { get; private set; }
+
+        /// <summary>
+        /// Que el celular no apague la pantalla mientras se juega: si el anfitrion se
+        /// bloquea, la partida se cae para todos.
+        /// </summary>
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+        private static void KeepScreenOn()
+        {
+            Screen.sleepTimeout = SleepTimeout.NeverSleep;
+        }
 
         private void Awake()
         {
@@ -78,6 +90,7 @@ namespace TurboGrid
                 // Escucha en TODAS las interfaces (0.0.0.0) para que otros
                 // dispositivos de la red local puedan alcanzar el host.
                 transport.SetConnectionData("127.0.0.1", (ushort)gamePort, "0.0.0.0");
+                ConfigureTimeouts(transport);
 
                 CurrentJoinCode = GenerateJoinCode();
                 LanDiscovery.StartHostResponder(CurrentJoinCode, gamePort);
@@ -133,11 +146,12 @@ namespace TurboGrid
 
                 if (host == null)
                 {
-                    LastError = "No se encontro ninguna partida con ese codigo en esta red.";
+                    LastError = "No se encontro la partida. ¿Estan en la misma Wi-Fi? En iPhone acepta el permiso de \"Red local\" (Ajustes > Turbo Grid).";
                     return false;
                 }
 
                 transport.SetConnectionData(host.Value.Address, (ushort)host.Value.Port);
+                ConfigureTimeouts(transport);
 
                 GameNetworkManager.Instance?.PrepareLocalConnection();
 
@@ -168,20 +182,29 @@ namespace TurboGrid
         }
 
         /// <summary>
-        /// Genera un codigo de 6 letras/numeros aleatorios (sin caracteres
-        /// confusos) usando el RNG criptografico del sistema.
+        /// Si el anfitrion se cae (bateria, pantalla bloqueada, salio de la app), los
+        /// demas se enteran en ~6 s en vez de quedarse congelados 30 s.
         /// </summary>
-        private static string GenerateJoinCode()
+        private void ConfigureTimeouts(UnityTransport transport)
         {
-            char[] chars = new char[CodeLength];
-            byte[] bytes = new byte[CodeLength];
+            transport.HeartbeatTimeoutMS = 500;
+            transport.DisconnectTimeoutMS = Mathf.Max(2000, disconnectTimeoutMs);
+        }
+
+        /// <summary>
+        /// Codigo de 6 caracteres (sin O/0 ni I/1) que lleva escondidos los dos ultimos
+        /// numeros de la IP del host: asi el cliente le pregunta directo, sin broadcast.
+        /// </summary>
+        private string GenerateJoinCode()
+        {
+            byte[] bytes = new byte[2];
             using (var rng = RandomNumberGenerator.Create())
             {
                 rng.GetBytes(bytes);
             }
-            for (int i = 0; i < CodeLength; i++)
-                chars[i] = CodeAlphabet[bytes[i] % CodeAlphabet.Length];
-            return new string(chars);
+            var ip = LanDiscovery.GetLocalIPv4();
+            HostAddress = ip != null ? ip.ToString() : null;
+            return LanDiscovery.EncodeHostHint(ip, (bytes[0] << 8) | bytes[1]);
         }
     }
 }
