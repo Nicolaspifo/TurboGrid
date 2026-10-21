@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Turbo Grid · Carrera de Combustible</title>
-  <meta name="description" content="Turbo Grid: carrera multijugador en red para celulares. De 2 a 4 pilotos, gasolina, DRS y pinchazos. iOS y Android juegan juntos.">
+  <meta name="description" content="Turbo Grid: carrera multijugador en red para celulares. De 2 a 4 pilotos, gasolina y 5 power-ups. iOS y Android juegan juntos en la misma Wi-Fi.">
   <meta property="og:title" content="Turbo Grid · Carrera de Combustible">
   <meta property="og:description" content="Carrera multijugador para celulares: recoge gasolina, usa el DRS y pincha a tus rivales. 2 a 4 pilotos, iOS y Android.">
   <meta property="og:image" content="assets/img/portada.jpg">
@@ -59,7 +59,7 @@
 
 <section id="como-se-juega" class="seccion">
   <h2>Cómo se juega</h2>
-  <p class="intro">Crea una sala, comparte el código de 6 letras con tus amigos y salgan juntos desde la parrilla.</p>
+  <p class="intro">Conéctense a la misma red Wi-Fi, crea una sala, comparte el código de 6 letras y salgan juntos desde la parrilla.</p>
   <ol class="pasos">
     <li>
       <span class="num">1</span>
@@ -74,7 +74,7 @@
     <li>
       <span class="num">3</span>
       <h3>Recoge gasolina</h3>
-      <p>Hay 50 bidones en la pista. Cada uno da <b>20 puntos</b> y reaparece a los <b>10 segundos</b>.</p>
+      <p>Hay 50 bidones en la pista. Cada uno da <b>10 puntos</b> y reaparece casi al instante. Si te sales al pasto, el auto frena.</p>
     </li>
     <li>
       <span class="num">4</span>
@@ -90,7 +90,7 @@
     <article class="tarjeta">
       <img src="assets/img/item_gasolina.png" alt="" width="110" height="110">
       <h3>Gasolina</h3>
-      <p>+20 puntos por bidón. Vuelve a aparecer en el mismo lugar a los 10 s.</p>
+      <p>+10 puntos por bidón. Vuelve a aparecer en el mismo lugar en 1 segundo.</p>
     </article>
     <article class="tarjeta azul">
       <img src="assets/img/boton_velocidad.png" alt="" width="110" height="110">
@@ -100,7 +100,22 @@
     <article class="tarjeta morada">
       <img src="assets/img/boton_poder.png" alt="" width="110" height="110">
       <h3>Pinchazo</h3>
-      <p>Deja quieto <b>2 segundos</b> a un rival elegido al azar. Todos ven quién lo tiene guardado…</p>
+      <p>Deja quieto <b>2 segundos</b> al <b>líder</b> de la carrera. Todos ven quién lo tiene guardado…</p>
+    </article>
+    <article class="tarjeta verde">
+      <img src="assets/img/boton_escudo.png" alt="" width="110" height="110">
+      <h3>Escudo</h3>
+      <p>Se activa al recogerlo: durante 8 segundos <b>bloquea el próximo Pinchazo</b>.</p>
+    </article>
+    <article class="tarjeta roja">
+      <img src="assets/img/boton_iman.png" alt="" width="110" height="110">
+      <h3>Imán</h3>
+      <p>6 segundos atrayendo <b>la gasolina cercana</b> sin tener que pasar encima.</p>
+    </article>
+    <article class="tarjeta dorada">
+      <img src="assets/img/boton_doble.png" alt="" width="110" height="110">
+      <h3>Puntos x2</h3>
+      <p>Durante 8 segundos cada bidón vale <b>el doble</b>.</p>
     </article>
   </div>
 </section>
@@ -141,11 +156,12 @@
   <h2>Cómo está hecho</h2>
   <div class="tecno">
     <div><h3>Unity 6</h3><p>2D con Universal Render Pipeline. Un solo proyecto para iOS y Android.</p></div>
-    <div><h3>Multijugador en red</h3><p>Netcode for GameObjects + Unity Relay: un celular es el anfitrión y los demás se conectan con un código. iPhone y Android juegan en la misma sala.</p></div>
+    <div><h3>Multijugador en red local</h3><p>Netcode for GameObjects por Wi-Fi, sin internet: un celular es el anfitrión y los demás lo encuentran con un código de 6 letras. iPhone y Android juegan en la misma sala.</p></div>
     <div><h3>Autoridad del servidor</h3><p>El anfitrión decide puntos, gasolina, power-ups y el ganador, así nadie puede hacer trampa.</p></div>
     <div><h3>Audio procedural</h3><p>Motor V12 sintetizado en tiempo real según las rpm, música en loop y efectos generados por código.</p></div>
+    <div><h3>Derrape y pasto</h3><p>En curvas violentas a alta velocidad la cola se desliza y deja marcas en el asfalto; en el pasto el auto pierde velocidad y levanta polvo.</p></div>
     <div><h3>Pantallas adaptables</h3><p>La interfaz se ajusta a cualquier celular o tablet en horizontal y respeta el notch.</p></div>
-    <div><h3>3 circuitos</h3><p>Selección manual o aleatoria. La parrilla de 4 casillas se sortea en cada carrera.</p></div>
+    <div><h3>3 circuitos</h3><p>Gran Premio (lleno de curvas), Óvalo y Óvalo nocturno. Selección manual o aleatoria; la parrilla de 4 casillas se sortea en cada carrera.</p></div>
   </div>
 </section>
 

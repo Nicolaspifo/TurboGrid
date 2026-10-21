@@ -142,9 +142,15 @@ a { color: inherit; }
 .tarjeta:hover { transform: translateY(-6px) rotate(-1deg); }
 .tarjeta.azul { border-color: var(--azul-claro); }
 .tarjeta.morada { border-color: var(--morado); }
+.tarjeta.verde { border-color: #4dd9ac; }
+.tarjeta.roja { border-color: #ff6b6b; }
+.tarjeta.dorada { border-color: #ffd54f; }
 .tarjeta img { animation: flotar 3s ease-in-out infinite; }
 .tarjeta.azul img { animation-delay: -1s; }
 .tarjeta.morada img { animation-delay: -2s; }
+.tarjeta.verde img { animation-delay: -0.5s; }
+.tarjeta.roja img { animation-delay: -1.5s; }
+.tarjeta.dorada img { animation-delay: -2.5s; }
 .tarjeta p { color: var(--texto-suave); margin: 0; }
 
 /* Controles */
