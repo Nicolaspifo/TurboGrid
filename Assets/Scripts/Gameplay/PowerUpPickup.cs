@@ -5,8 +5,11 @@ namespace TurboGrid
 {
     public enum PowerUpType : byte
     {
-        Drs = 0,
-        Pinchazo = 1
+        Drs = 0,          // se guarda y se activa con boton: +velocidad
+        Pinchazo = 1,     // se guarda y se activa con boton: bloquea al lider
+        Escudo = 2,       // instantaneo: protege del proximo Pinchazo
+        Iman = 3,         // instantaneo: atrae la gasolina cercana
+        DoblePuntos = 4   // instantaneo: la gasolina vale el doble
     }
 
     /// <summary>
@@ -31,6 +34,9 @@ namespace TurboGrid
         [SerializeField] private SpriteRenderer spriteRenderer;
         [SerializeField] private Sprite drsSprite;
         [SerializeField] private Sprite pinchazoSprite;
+        [SerializeField] private Sprite escudoSprite;
+        [SerializeField] private Sprite imanSprite;
+        [SerializeField] private Sprite doblePuntosSprite;
         [SerializeField] private float pickupRadius = GameConstants.POWERUP_PICKUP_RADIUS;
 
         private Vector3 _baseScale;
@@ -85,7 +91,15 @@ namespace TurboGrid
         private void ApplySprite()
         {
             if (spriteRenderer == null) return;
-            var sprite = Type.Value == PowerUpType.Drs ? drsSprite : pinchazoSprite;
+            Sprite sprite;
+            switch (Type.Value)
+            {
+                case PowerUpType.Drs: sprite = drsSprite; break;
+                case PowerUpType.Pinchazo: sprite = pinchazoSprite; break;
+                case PowerUpType.Escudo: sprite = escudoSprite; break;
+                case PowerUpType.Iman: sprite = imanSprite; break;
+                default: sprite = doblePuntosSprite; break;
+            }
             if (sprite != null) spriteRenderer.sprite = sprite;
         }
 

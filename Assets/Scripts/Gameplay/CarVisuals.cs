@@ -23,12 +23,18 @@ namespace TurboGrid
         private SpriteRenderer _body;
         private Color _bodyBaseColor = Color.white;
         private TrailRenderer _trail;
+        private TrailRenderer _skidLeft, _skidRight, _dust;
+        private Vector3 _lastPos;
+        private Vector2 _velocity;
         private TextMeshPro _label;
         private Transform _labelRoot;
         private SpriteRenderer _minimapMarker;
         private float _labelOffset = 55f;
 
+        private SpriteRenderer _shieldAura, _magnetAura, _doubleAura;
+
         private static Sprite _circleSprite;
+        private static Sprite _ringSprite;
         private static Material _trailMaterial;
 
         private void Awake()
@@ -48,8 +54,10 @@ namespace TurboGrid
             if (_body != null) _labelOffset = Mathf.Max(30f, _body.bounds.extents.magnitude + 5f);
 
             CreateTrail();
+            CreateGroundMarks();
             CreateLabel();
             CreateMinimapMarker();
+            CreateAuras();
 
             // Motor y derrape procedurales.
             if (GetComponent<CarAudio>() == null) gameObject.AddComponent<CarAudio>();
@@ -124,8 +132,154 @@ namespace TurboGrid
             _minimapMarker.sortingOrder = 100;
         }
 
+        /// <summary>Burbujas de color alrededor del auto para Escudo, Iman y Puntos x2.</summary>
+        private void CreateAuras()
+        {
+            _shieldAura = MakeAura("AuraEscudo", 2);
+            _magnetAura = MakeAura("AuraIman", -2);
+            _doubleAura = MakeAura("AuraDoble", -3);
+        }
+
+        private SpriteRenderer MakeAura(string auraName, int orderOffset)
+        {
+            var go = new GameObject(auraName);
+            go.transform.SetParent(transform, false);
+            var sr = go.AddComponent<SpriteRenderer>();
+            sr.sprite = GetRingSprite();
+            sr.sortingLayerID = _sortingLayerId;
+            sr.sortingOrder = (_body != null ? _body.sortingOrder : 0) + orderOffset;
+            sr.enabled = false;
+            return sr;
+        }
+
+        /// <summary>Escala local para que el aura mida <paramref name="worldSize"/> en el mundo.</summary>
+        private void SetAuraSize(SpriteRenderer aura, float worldSize)
+        {
+            float parentScale = Mathf.Max(0.0001f, transform.lossyScale.x);
+            aura.transform.localScale = Vector3.one * (worldSize / parentScale);
+        }
+
+        private void UpdateAuras()
+        {
+            if (_shieldAura == null) return;
+            bool finished = RaceManager.Instance != null && RaceManager.Instance.IsFinished;
+            float t = Time.time;
+            float carSize = _labelOffset * 2f;
+
+            bool shield = !finished && _data.HasShield.Value;
+            _shieldAura.enabled = shield;
+            if (shield)
+            {
+                SetAuraSize(_shieldAura, carSize * (1.05f + Mathf.Sin(t * 5f) * 0.05f));
+                _shieldAura.color = new Color(0.3f, 1f, 0.8f, 0.75f + Mathf.Sin(t * 5f) * 0.2f);
+            }
+
+            bool magnet = !finished && _data.IsMagnetActive;
+            _magnetAura.enabled = magnet;
+            if (magnet)
+            {
+                // Ondas que se cierran hacia el auto: muestran el radio de atraccion.
+                float k = 1f - Mathf.Repeat(t * 1.2f, 1f);
+                SetAuraSize(_magnetAura, Mathf.Lerp(carSize, GameConstants.IMAN_RADIUS * 2f, k));
+                _magnetAura.color = new Color(1f, 0.35f, 0.35f, 0.15f + 0.55f * (1f - k));
+                _magnetAura.transform.rotation = Quaternion.identity;
+            }
+
+            bool dbl = !finished && _data.IsDoublePointsActive;
+            _doubleAura.enabled = dbl;
+            if (dbl)
+            {
+                SetAuraSize(_doubleAura, carSize * (1.25f + Mathf.Sin(t * 8f) * 0.08f));
+                _doubleAura.color = new Color(1f, 0.82f, 0.25f, 0.6f);
+            }
+        }
+
+        /// <summary>Anillo suave (borde brillante, centro transparente) generado por codigo.</summary>
+        public static Sprite GetRingSprite()
+        {
+            if (_ringSprite != null) return _ringSprite;
+            const int size = 128;
+            var tex = new Texture2D(size, size, TextureFormat.RGBA32, false) { filterMode = FilterMode.Bilinear };
+            var center = new Vector2(size / 2f - 0.5f, size / 2f - 0.5f);
+            float r = size / 2f - 2f;
+            for (int y = 0; y < size; y++)
+            {
+                for (int x = 0; x < size; x++)
+                {
+                    float d = Vector2.Distance(new Vector2(x, y), center) / r; // 0 centro, 1 borde
+                    float edge = Mathf.Clamp01((1f - d) * r);                  // antialias exterior
+                    float a = Mathf.Pow(Mathf.Clamp01(d), 3f) * 0.85f + (d > 0.9f ? 0.15f : 0f);
+                    tex.SetPixel(x, y, new Color(1f, 1f, 1f, a * edge));
+                }
+            }
+            tex.Apply();
+            _ringSprite = Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), size);
+            return _ringSprite;
+        }
+
+        /// <summary>Marcas de llanta (derrape) en las ruedas traseras y polvo (pasto).</summary>
+        private void CreateGroundMarks()
+        {
+            Vector3 ext = _body != null && _body.sprite != null ? _body.sprite.bounds.extents : new Vector3(2.5f, 4f, 0f);
+            _skidLeft = MakeMark("MarcaIzq", new Vector3(-ext.x * 0.55f, -ext.y * 0.6f, 0f), 6f, 2.2f,
+                new Color(0.08f, 0.08f, 0.09f, 0.55f), new Color(0.08f, 0.08f, 0.09f, 0f));
+            _skidRight = MakeMark("MarcaDer", new Vector3(ext.x * 0.55f, -ext.y * 0.6f, 0f), 6f, 2.2f,
+                new Color(0.08f, 0.08f, 0.09f, 0.55f), new Color(0.08f, 0.08f, 0.09f, 0f));
+            _dust = MakeMark("Polvo", new Vector3(0f, -ext.y * 0.8f, 0f), 22f, 0.55f,
+                new Color(0.55f, 0.45f, 0.28f, 0.45f), new Color(0.55f, 0.45f, 0.28f, 0f));
+            _lastPos = transform.position;
+        }
+
+        private TrailRenderer MakeMark(string markName, Vector3 localPos, float width, float time, Color start, Color end)
+        {
+            var go = new GameObject(markName);
+            go.transform.SetParent(transform, false);
+            go.transform.localPosition = localPos;
+            var tr = go.AddComponent<TrailRenderer>();
+            tr.time = time;
+            tr.startWidth = width;
+            tr.endWidth = width * 0.9f;
+            tr.minVertexDistance = 3f;
+            tr.emitting = false;
+            if (_trailMaterial != null) tr.sharedMaterial = _trailMaterial;
+            // Sobre el asfalto pero debajo de gasolina, power-ups y autos.
+            int trackLayer = SortingLayer.NameToID("Track");
+            if (SortingLayer.IsValid(trackLayer)) tr.sortingLayerID = trackLayer;
+            tr.sortingOrder = 50;
+            var g = new Gradient();
+            g.SetKeys(new[] { new GradientColorKey(start, 0f), new GradientColorKey(end, 1f) },
+                      new[] { new GradientAlphaKey(start.a, 0f), new GradientAlphaKey(end.a, 1f) });
+            tr.colorGradient = g;
+            return tr;
+        }
+
+        private void UpdateGroundMarks()
+        {
+            float dt = Mathf.Max(Time.deltaTime, 0.0001f);
+            Vector3 pos = transform.position;
+            _velocity = Vector2.Lerp(_velocity, (pos - _lastPos) / dt, 1f - Mathf.Exp(-dt * 12f));
+            _lastPos = pos;
+
+            Vector2 forward = transform.up;
+            Vector2 right = new Vector2(forward.y, -forward.x);
+            float speed = _velocity.magnitude;
+            float lateral = Mathf.Abs(Vector2.Dot(_velocity, right));
+
+            bool offRoad = TrackSurface.Instance != null && !TrackSurface.Instance.IsOnRoad(pos);
+            var car = _data != null ? _data.Car : null;
+            bool ownerDrift = _data != null && _data.IsOwner && car != null && car.DriftAmount > 0.35f;
+            // Derrape visible: el auto se mueve "de lado" (sirve tambien para autos remotos).
+            bool sliding = !offRoad && (ownerDrift || (speed > 70f && lateral > 40f));
+
+            if (_skidLeft != null) _skidLeft.emitting = sliding;
+            if (_skidRight != null) _skidRight.emitting = sliding;
+            if (_dust != null) _dust.emitting = offRoad && speed > 35f;
+        }
+
         private void LateUpdate()
         {
+            UpdateGroundMarks();
+
             if (_data == null || !_data.IsSpawned) return;
 
             Color playerColor = _data.PlayerColor;
@@ -150,6 +304,7 @@ namespace TurboGrid
 
             // DRS
             if (_trail != null) _trail.emitting = _data.IsDrsActive.Value;
+            UpdateAuras();
 
             // Pinchazo: parpadeo morado
             if (_body != null)
@@ -209,6 +364,22 @@ namespace TurboGrid
             {
                 if (tags.Length > 0) tags += " ";
                 tags += "<color=#C77DFF>[PINCHAZO]</color>";
+            }
+
+            if (_data.HasShield.Value)
+            {
+                if (tags.Length > 0) tags += " ";
+                tags += "<color=#4DD9AC>[ESCUDO]</color>";
+            }
+            if (_data.IsMagnetActive)
+            {
+                if (tags.Length > 0) tags += " ";
+                tags += "<color=#FF6B6B>IMAN</color>";
+            }
+            if (_data.IsDoublePointsActive)
+            {
+                if (tags.Length > 0) tags += " ";
+                tags += "<color=#FFD54F>x2</color>";
             }
 
             if (_data.IsStunned.Value && (RaceManager.Instance == null || !RaceManager.Instance.IsFinished))

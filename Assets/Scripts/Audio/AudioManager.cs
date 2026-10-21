@@ -183,6 +183,7 @@ namespace TurboGrid
         public static readonly string[] AllSfx =
         {
             "gasolina", "recoger_drs", "activar_drs", "recoger_pinchazo", "lanzar_pinchazo", "pinchado",
+            "escudo", "escudo_bloqueo", "iman", "doble_puntos",
             "choque", "frenazo", "cuenta_beep", "cuenta_go", "boton", "jugador_listo", "jugador_entra", "aplausos"
         };
 
@@ -363,6 +364,10 @@ namespace TurboGrid
                 case PlayerNetworkData.PowerUpFeed.RecogioDrs: Play("recoger_drs", me ? 0.9f : 0.35f); break;
                 case PlayerNetworkData.PowerUpFeed.RecogioPinchazo: Play("recoger_pinchazo", me ? 0.9f : 0.45f); break;
                 case PlayerNetworkData.PowerUpFeed.ActivoDrs: Play("activar_drs", me ? 1f : 0.45f); break;
+                case PlayerNetworkData.PowerUpFeed.RecogioEscudo: Play("escudo", me ? 0.9f : 0.35f); break;
+                case PlayerNetworkData.PowerUpFeed.RecogioIman: Play("iman", me ? 0.9f : 0.35f); break;
+                case PlayerNetworkData.PowerUpFeed.RecogioDoblePuntos: Play("doble_puntos", me ? 0.9f : 0.35f); break;
+                case PlayerNetworkData.PowerUpFeed.EscudoBloqueo: Play("escudo_bloqueo", me ? 1f : 0.6f); break;
             }
         }
 

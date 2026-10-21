@@ -224,9 +224,30 @@ namespace TurboGrid
             ShowSala(true);
         }
 
+        private LoadingOverlay _loading;
+
+        /// <summary>Pantalla de carga (rueda girando + mensaje) sobre todo el menu.</summary>
+        private void ShowLoading(string message)
+        {
+            if (_loading == null)
+            {
+                var canvas = GetComponentInParent<Canvas>();
+                if (canvas == null) return;
+                var font = statusText != null ? statusText.font : null;
+                _loading = LoadingOverlay.Create(canvas.rootCanvas, font);
+            }
+            _loading.Show(message);
+        }
+
+        private void HideLoading()
+        {
+            if (_loading != null) _loading.Hide();
+        }
+
         private void SetStage(LobbyStage stage)
         {
             _stage = stage;
+            if (stage != LobbyStage.Busy) HideLoading();
             bool idle = stage == LobbyStage.Idle;
             if (hostButton != null) hostButton.interactable = idle;
             if (joinButton != null) joinButton.interactable = idle;
@@ -238,6 +259,8 @@ namespace TurboGrid
         private void SetStatus(string message)
         {
             if (statusText != null) statusText.text = message;
+            // Mientras se crea o busca la partida, el mensaje va en la pantalla de carga.
+            if (_stage == LobbyStage.Busy) ShowLoading(message);
         }
 
         // =====================================================================
@@ -325,6 +348,7 @@ namespace TurboGrid
             if (session == null)
             {
                 SetSalaStatus("Conectando con la sala...");
+                if (_stage == LobbyStage.Joined) ShowLoading("Conectando con la sala...");
                 if (readyButton != null) readyButton.interactable = false;
                 return;
             }
@@ -350,6 +374,9 @@ namespace TurboGrid
                 }
                 if (readyButtonText != null)
                     readyButtonText.text = found && me.IsReady ? "CANCELAR" : "¡ESTOY LISTO!";
+
+                if (connecting) ShowLoading("Conectando con la sala...");
+                else HideLoading();
 
                 if (connecting) SetSalaStatus("Conectando con la sala...");
                 else if (!me.IsReady) SetSalaStatus("Toca ¡ESTOY LISTO! cuando estes preparado");

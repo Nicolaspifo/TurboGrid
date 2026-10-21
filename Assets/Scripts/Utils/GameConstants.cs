@@ -30,6 +30,12 @@ namespace TurboGrid
 
         public const float PINCHAZO_STUN_DURATION = 2f;
 
+        // Poderes que se activan al recogerlos
+        public const float ESCUDO_DURATION = 8f;        // protege del proximo Pinchazo
+        public const float IMAN_DURATION = 6f;          // atrae la gasolina cercana
+        public const float IMAN_RADIUS = 170f;          // radio de recoleccion con iman
+        public const float DOBLE_PUNTOS_DURATION = 8f;  // la gasolina vale el doble
+
         // Auto (unidades de mundo por segundo; el auto mide ~35 x 56)
         public const float CAR_MAX_SPEED = 170f;
         public const float CAR_ACCELERATION = 220f;

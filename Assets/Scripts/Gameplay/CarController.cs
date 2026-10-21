@@ -31,14 +31,37 @@ namespace TurboGrid
         [Tooltip("Que tanto se conserva la velocidad lateral (0 = sin derrape, 1 = hielo).")]
         [SerializeField, Range(0f, 1f)] private float lateralGrip = 0.15f;
 
+        [Header("Fuera de pista")]
+        [Tooltip("Velocidad maxima en el pasto, como fraccion de la normal.")]
+        [SerializeField, Range(0.1f, 1f)] private float offRoadSpeedFactor = 0.45f;
+
+        [Header("Derrape (curvas violentas)")]
+        [Tooltip("Desde que fraccion de la velocidad maxima puede derrapar.")]
+        [SerializeField, Range(0f, 1f)] private float driftMinSpeed = 0.55f;
+        [Tooltip("Que tan fuerte hay que girar para derrapar (0..1).")]
+        [SerializeField, Range(0f, 1f)] private float driftMinSteer = 0.75f;
+        [Tooltip("Agarre lateral mientras derrapa (mas alto = se desliza mas).")]
+        [SerializeField, Range(0f, 1f)] private float driftLateralGrip = 0.9f;
+        [Tooltip("Giro extra mientras derrapa (sobreviraje).")]
+        [SerializeField] private float driftTurnBoost = 1.3f;
+        [Tooltip("Velocidad que se pierde por segundo mientras derrapa.")]
+        [SerializeField] private float driftScrub = 30f;
+
         private Rigidbody2D _rb;
         private PlayerNetworkData _data;
         private bool _inputLocked;
         private float _speed; // velocidad escalar sobre el eje "adelante"
 
+        private float _drift;     // 0..1 cuanto esta derrapando
+        private bool _offRoad;
+
         public bool IsInputLocked => _inputLocked;
         public float CurrentSpeed => _speed;
         public float MaxSpeed => maxSpeed;
+        /// <summary>0..1: cuanto derrapa el auto propio (solo valido en el dueño).</summary>
+        public float DriftAmount => _drift;
+        /// <summary>True si el auto propio esta fuera del asfalto (solo valido en el dueño).</summary>
+        public bool IsOffRoad => _offRoad;
 
         private void Awake()
         {
@@ -100,6 +123,10 @@ namespace TurboGrid
 
             float speedCap = maxSpeed * (_data != null && _data.IsDrsActive.Value ? GameConstants.DRS_SPEED_MULTIPLIER : 1f);
 
+            // Fuera del asfalto el auto se ralentiza (pasto, isla del medio).
+            _offRoad = TrackSurface.Instance != null && !TrackSurface.Instance.IsOnRoad(_rb.position);
+            if (_offRoad) speedCap *= offRoadSpeedFactor;
+
             // --- Aceleracion / freno ---
             if (_inputLocked)
             {
@@ -121,15 +148,21 @@ namespace TurboGrid
                 _speed = Mathf.MoveTowards(_speed, 0f, coastDeceleration * dt);
             }
 
-            // Si termina el DRS, bajar suavemente al limite normal.
-            if (_speed > speedCap) _speed = Mathf.MoveTowards(_speed, speedCap, brakeForce * dt);
+            // Si termina el DRS o entra al pasto, bajar al limite (en el pasto, mas rapido).
+            if (_speed > speedCap) _speed = Mathf.MoveTowards(_speed, speedCap, brakeForce * (_offRoad ? 1.6f : 1f) * dt);
+
+            // --- Derrape: girar fuerte a alta velocidad hace que la cola se deslice ---
+            float speed01 = Mathf.Abs(_speed) / Mathf.Max(1f, maxSpeed);
+            bool wantsDrift = canDrive && !_offRoad && _speed > 0f && speed01 >= driftMinSpeed && Mathf.Abs(steer) >= driftMinSteer;
+            _drift = Mathf.MoveTowards(_drift, wantsDrift ? 1f : 0f, (wantsDrift ? 3.5f : 2.2f) * dt);
+            if (_drift > 0.01f) _speed = Mathf.MoveTowards(_speed, 0f, driftScrub * _drift * dt);
 
             // --- Giro (depende de la velocidad, como un auto real) ---
             if (Mathf.Abs(steer) > 0.01f)
             {
                 float speedFactor = Mathf.Clamp01(Mathf.Abs(_speed) / (maxSpeed * fullTurnSpeedRatio));
                 float direction = _speed >= 0f ? 1f : -1f;
-                float deltaAngle = -steer * turnSpeed * speedFactor * direction * dt;
+                float deltaAngle = -steer * turnSpeed * speedFactor * direction * dt * Mathf.Lerp(1f, driftTurnBoost, _drift);
                 _rb.MoveRotation(_rb.rotation + deltaAngle);
             }
             _rb.angularVelocity = 0f;
@@ -137,7 +170,8 @@ namespace TurboGrid
             // --- Velocidad final: adelante + un poco de derrape lateral ---
             Vector2 newForward = Quaternion.Euler(0f, 0f, _rb.rotation) * Vector2.up;
             Vector2 right = new Vector2(newForward.y, -newForward.x);
-            float lateral = Vector2.Dot(_rb.linearVelocity, right) * lateralGrip;
+            float grip = Mathf.Lerp(lateralGrip, driftLateralGrip, _drift);
+            float lateral = Vector2.Dot(_rb.linearVelocity, right) * grip;
             _rb.linearVelocity = newForward * _speed + right * lateral;
         }
 

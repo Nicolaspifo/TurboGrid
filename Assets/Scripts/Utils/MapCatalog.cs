@@ -18,9 +18,11 @@ namespace TurboGrid
 
         private static readonly MapInfo[] AllMaps =
         {
-            new MapInfo { DisplayName = "Circuito 1: Ovalo", SceneName = "Game" },
-            new MapInfo { DisplayName = "Circuito 2", SceneName = "Circuito2" },
-            new MapInfo { DisplayName = "Circuito 3", SceneName = "Circuito3" },
+            new MapInfo { DisplayName = "Circuito 1: Gran Premio", SceneName = "GranPremio" },
+            new MapInfo { DisplayName = "Circuito 2: Ovalo", SceneName = "Game" },
+            new MapInfo { DisplayName = "Circuito 3: Ovalo nocturno", SceneName = "Circuito3" },
+            // Circuito2 (ovalo desierto) quedo fuera del build: el Gran Premio lo reemplaza.
+            new MapInfo { DisplayName = "Ovalo desierto", SceneName = "Circuito2" },
         };
 
         private static List<MapInfo> _available;

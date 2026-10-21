@@ -57,6 +57,23 @@ namespace TurboGrid
         public NetworkVariable<double> StunEndTime = new NetworkVariable<double>(
             0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
 
+        // ---- Poderes instantaneos (se activan al recogerlos) ----
+        public NetworkVariable<bool> HasShield = new NetworkVariable<bool>(
+            false, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+        public NetworkVariable<double> ShieldEndTime = new NetworkVariable<double>(
+            0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+        public NetworkVariable<double> MagnetEndTime = new NetworkVariable<double>(
+            0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+        public NetworkVariable<double> DoublePointsEndTime = new NetworkVariable<double>(
+            0, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Server);
+
+        private double Now => NetworkManager != null ? NetworkManager.ServerTime.Time : 0;
+        public bool IsMagnetActive => IsSpawned && Now < MagnetEndTime.Value;
+        public bool IsDoublePointsActive => IsSpawned && Now < DoublePointsEndTime.Value;
+        public float ShieldRemaining => HasShield.Value ? Mathf.Max(0f, (float)(ShieldEndTime.Value - Now)) : 0f;
+        public float MagnetRemaining => Mathf.Max(0f, (float)(MagnetEndTime.Value - Now));
+        public float DoublePointsRemaining => Mathf.Max(0f, (float)(DoublePointsEndTime.Value - Now));
+
         /// <summary>Solo en clientes: aviso para mostrar "¡Pinchazo a X!" en el HUD.</summary>
         public static event Action<string, string> OnPinchazoFeed; // (atacante, victima)
 
@@ -65,7 +82,11 @@ namespace TurboGrid
         {
             RecogioDrs = 0,
             RecogioPinchazo = 1,
-            ActivoDrs = 2
+            ActivoDrs = 2,
+            RecogioEscudo = 3,
+            RecogioIman = 4,
+            RecogioDoblePuntos = 5,
+            EscudoBloqueo = 6   // el escudo de este piloto bloqueo un Pinchazo
         }
 
         /// <summary>En todos los clientes: (tipo de aviso, clientId del piloto, nombre del piloto).</summary>
@@ -127,6 +148,9 @@ namespace TurboGrid
 
             if (IsStunned.Value && StunEndTime.Value > 0 && now >= StunEndTime.Value)
                 IsStunned.Value = false;
+
+            if (HasShield.Value && now >= ShieldEndTime.Value)
+                HasShield.Value = false;
         }
 
         // ---------------- Solo servidor ----------------
@@ -150,20 +174,44 @@ namespace TurboGrid
             DrsEndTime.Value = 0;
             IsStunned.Value = false;
             StunEndTime.Value = 0;
+            HasShield.Value = false;
+            ShieldEndTime.Value = 0;
+            MagnetEndTime.Value = 0;
+            DoublePointsEndTime.Value = 0;
         }
 
         public void AddFuelServer()
         {
             if (!IsServer) return;
             FuelCount.Value += 1;
-            Points.Value += GameConstants.POINTS_PER_FUEL;
+            Points.Value += GameConstants.POINTS_PER_FUEL * (IsDoublePointsActive ? 2 : 1);
             RaceManager.Instance?.NotifyScoreChangedServer(this);
         }
 
-        /// <summary>Guarda un power-up recogido. Devuelve false si ya tenia uno de ese tipo.</summary>
+        /// <summary>
+        /// Da un power-up recogido. DRS y Pinchazo se guardan (devuelve false si ya
+        /// tenia uno); Escudo, Iman y Doble puntos se activan al instante (o se renuevan).
+        /// </summary>
         public bool GivePowerUpServer(PowerUpType type)
         {
             if (!IsServer) return false;
+            switch (type)
+            {
+                case PowerUpType.Escudo:
+                    HasShield.Value = true;
+                    ShieldEndTime.Value = Now + GameConstants.ESCUDO_DURATION;
+                    AnnouncePowerUpRpc(PowerUpFeed.RecogioEscudo, DisplayName);
+                    return true;
+                case PowerUpType.Iman:
+                    MagnetEndTime.Value = Now + GameConstants.IMAN_DURATION;
+                    AnnouncePowerUpRpc(PowerUpFeed.RecogioIman, DisplayName);
+                    return true;
+                case PowerUpType.DoblePuntos:
+                    DoublePointsEndTime.Value = Now + GameConstants.DOBLE_PUNTOS_DURATION;
+                    AnnouncePowerUpRpc(PowerUpFeed.RecogioDoblePuntos, DisplayName);
+                    return true;
+            }
+
             if (type == PowerUpType.Drs)
             {
                 if (HasDrs.Value) return false;
@@ -229,8 +277,18 @@ namespace TurboGrid
                 PlayerNetworkData target = PickLeaderRivalServer();
                 if (target == null) return; // no hay rivales: se conserva el power-up
                 HasPinchazo.Value = false;
-                target.SetStunnedServer(true, GameConstants.PINCHAZO_STUN_DURATION);
-                AnnouncePinchazoRpc(DisplayName, target.DisplayName);
+                if (target.HasShield.Value)
+                {
+                    // El escudo absorbe el pinchazo y se gasta.
+                    target.HasShield.Value = false;
+                    target.ShieldEndTime.Value = 0;
+                    target.AnnouncePowerUpRpc(PowerUpFeed.EscudoBloqueo, target.DisplayName);
+                }
+                else
+                {
+                    target.SetStunnedServer(true, GameConstants.PINCHAZO_STUN_DURATION);
+                    AnnouncePinchazoRpc(DisplayName, target.DisplayName);
+                }
             }
         }
 

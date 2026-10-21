@@ -13,14 +13,14 @@ namespace TurboGrid
     public class CameraFollow : MonoBehaviour
     {
         [SerializeField] private float followSmoothTime = 0.15f;
-        [SerializeField] private float baseOrthoSize = 230f;
-        [SerializeField] private float maxExtraZoom = 50f;
+        [SerializeField] private float baseOrthoSize = 150f;   // mas cerca: los autos son mas pequenos
+        [SerializeField] private float maxExtraZoom = 35f;
         [SerializeField] private float lookAhead = 0.35f; // segundos de adelanto segun la velocidad
         [SerializeField] private float rotationSmoothTime = 0.12f; // suavizado de la rotacion con el auto
 
         // Al terminar la carrera la camara puede enfocar al ganador (todos los clientes).
         private static ulong? _focusClientId;
-        [SerializeField] private float celebrationOrthoSize = 150f;
+        [SerializeField] private float celebrationOrthoSize = 110f;
 
         /// <summary>Enfoca el auto de ese jugador (null = volver al auto propio).</summary>
         public static void FocusOn(ulong? clientId)

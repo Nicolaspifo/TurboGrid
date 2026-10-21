@@ -12,6 +12,7 @@ Si quieres reemplazar un sonido por uno grabado, pon un archivo con el MISMO nom
 (puede ser .wav, .ogg o .mp3) y borra el .wav generado.
 """
 import os
+import sys
 import wave
 
 import numpy as np
@@ -235,6 +236,51 @@ def sfx_pinchado():
     sad_f = 420 * np.exp(-t * 1.2) + 90
     sad = osc("tri", sad_f, None, 7) * adsr(n, 0.02, 0.1, 0.6, 0.4) * 0.45
     return fade_edges(hiss * 0.8 + thud + sad, 0.003, 0.2)
+
+
+def sfx_escudo():
+    # "campo de fuerza": acorde brillante que sube + zumbido suave (verde)
+    dur = 0.9
+    n = int(dur * SR)
+    t = t_axis(dur)
+    rise = 1 + 0.5 * (1 - np.exp(-t * 6))
+    chord = sum(osc("sine", note_freq(m) * rise, None) for m in (67, 71, 74, 79)) * 0.25
+    hum = osc("tri", 110 * rise, None, 7) * 0.25 * (1 + 0.3 * np.sin(2 * np.pi * 9 * t))
+    return fade_edges(delay((chord + hum) * adsr(n, 0.02, 0.2, 0.7, 0.4), 0.07, 0.25, 2), 0.004, 0.2)
+
+
+def sfx_escudo_bloqueo():
+    # golpe metalico "clang" + chispa: el pinchazo rebota en el escudo
+    dur = 0.8
+    n = int(dur * SR)
+    t = t_axis(dur)
+    clang = sum(osc("sine", f, None) * env_exp(n, d) for f, d in ((523, 0.4), (1307, 0.25), (2093, 0.15), (3301, 0.1))) * 0.35
+    hit = bandpass(noise(n), 1500, 8000) * env_exp(n, 0.03)
+    return fade_edges(clang + hit * 0.6, 0.001, 0.1)
+
+
+def sfx_iman():
+    # "wub" magnetico: tono grave con vibrato rapido que sube
+    dur = 1.0
+    n = int(dur * SR)
+    t = t_axis(dur)
+    f = 140 + 260 * (t / dur) + 25 * np.sin(2 * np.pi * 14 * t)
+    tone = np.tanh(2 * osc("saw", f, None, 8)) * 0.35
+    shimmer = osc("sine", f * 4, None) * 0.12 * (0.5 + 0.5 * np.sin(2 * np.pi * 7 * t))
+    return fade_edges(lowpass(tone + shimmer, 2500) * adsr(n, 0.03, 0.2, 0.8, 0.35), 0.005, 0.2)
+
+
+def sfx_doble_puntos():
+    # dos "monedas" seguidas + fanfarria corta (dorado)
+    coin = sfx_gasolina()
+    notes = [76, 81, 84, 88]
+    parts = []
+    for m in notes:
+        k = int(0.07 * SR)
+        parts.append(osc("square", note_freq(m), k, 6) * env_exp(k, 0.25) * 0.6)
+    fan = np.concatenate(parts)
+    gap = np.zeros(int(0.03 * SR))
+    return fade_edges(np.concatenate([coin[: int(0.15 * SR)], gap, coin, fan]) * 0.85)
 
 
 def sfx_choque():
@@ -536,10 +582,20 @@ def main():
         "jugador_listo": sfx_jugador_listo,
         "jugador_entra": sfx_jugador_entra,
         "aplausos": sfx_aplausos,
+        "escudo": sfx_escudo,
+        "escudo_bloqueo": sfx_escudo_bloqueo,
+        "iman": sfx_iman,
+        "doble_puntos": sfx_doble_puntos,
     }
+    # Uso: python3 generar_audio.py [nombre ...]  -> solo regenera esos efectos.
+    only = set(sys.argv[1:])
+    if only:
+        effects = {k: v for k, v in effects.items() if k in only}
     for name, fn in effects.items():
         save(os.path.join(SFX_DIR, name + ".wav"), fn())
 
+    if only:
+        return
     print("Musica:")
     save(os.path.join(MUSIC_DIR, "musica_carrera.wav"), music_race(), peak=0.8)
     save(os.path.join(MUSIC_DIR, "musica_menu.wav"), music_menu(), peak=0.75)

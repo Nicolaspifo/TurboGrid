@@ -138,6 +138,10 @@ namespace TurboGrid
                 case "recoger_pinchazo": return "Recoger Pinchazo";
                 case "lanzar_pinchazo": return "Lanzar Pinchazo";
                 case "pinchado": return "Te pincharon";
+                case "escudo": return "Recoger Escudo";
+                case "escudo_bloqueo": return "Escudo bloquea";
+                case "iman": return "Iman";
+                case "doble_puntos": return "Puntos x2";
                 case "choque": return "Choque";
                 case "frenazo": return "Frenazo";
                 case "cuenta_beep": return "Cuenta: bip";

@@ -151,4 +151,7 @@ MonoBehaviour:
   spriteRenderer: {fileID: 1809933961185130554}
   drsSprite: {fileID: -4066506381734091711, guid: 185ee00faea35a145bb2a53e7f8ad8fa, type: 3}
   pinchazoSprite: {fileID: 2846715311849991856, guid: ec5c4c0d63e4e5141b9d3b0e1c968eed, type: 3}
+  escudoSprite: {fileID: -4066506381734091711, guid: abba583bd64742a2a2099900051000eb, type: 3}
+  imanSprite: {fileID: -4066506381734091711, guid: 4e41cfb8e95d421fba92848038c1f0b0, type: 3}
+  doblePuntosSprite: {fileID: -4066506381734091711, guid: 256de979f79040b4babb4623570e2f33, type: 3}
   pickupRadius: 45

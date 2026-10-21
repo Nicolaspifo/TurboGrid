@@ -47,7 +47,11 @@ namespace TurboGrid
         private void HandleAvailabilityChanged(bool previous, bool current)
         {
             ApplyVisibility(current, animate: current);
-            if (previous && !current) AudioManager.PlayAt("gasolina", transform.position, 0.85f);
+            if (previous && !current)
+            {
+                AudioManager.PlayAt("gasolina", transform.position, 0.85f);
+                SpawnFlyToCar();
+            }
         }
 
         private void ApplyVisibility(bool visible, bool animate)
@@ -86,12 +90,13 @@ namespace TurboGrid
 
             if (RaceManager.Instance == null || !RaceManager.Instance.IsRacing) return;
 
-            float sqrRadius = pickupRadius * pickupRadius;
             Vector2 myPos = transform.position;
             foreach (var player in PlayerNetworkData.All)
             {
                 if (player == null || !player.IsSpawned) continue;
-                if (((Vector2)player.transform.position - myPos).sqrMagnitude > sqrRadius) continue;
+                // Con Iman el radio de recoleccion es mucho mas grande.
+                float radius = player.IsMagnetActive ? GameConstants.IMAN_RADIUS : pickupRadius;
+                if (((Vector2)player.transform.position - myPos).sqrMagnitude > radius * radius) continue;
 
                 IsAvailable.Value = false;
                 _respawnAt = NetworkManager.ServerTime.Time + GameConstants.FUEL_RESPAWN_SECONDS;
@@ -100,11 +105,69 @@ namespace TurboGrid
             }
         }
 
+        /// <summary>
+        /// Efecto visual: una copia del bidon vuela hacia el auto mas cercano y se achica
+        /// (con Iman se ve como si la gasolina fuera atraida).
+        /// </summary>
+        private void SpawnFlyToCar()
+        {
+            if (_renderers == null || _renderers.Length == 0 || _renderers[0].sprite == null) return;
+            PlayerNetworkData nearest = null;
+            float best = float.MaxValue;
+            foreach (var p in PlayerNetworkData.All)
+            {
+                if (p == null || !p.IsSpawned) continue;
+                float d = ((Vector2)p.transform.position - (Vector2)transform.position).sqrMagnitude;
+                if (d < best) { best = d; nearest = p; }
+            }
+            if (nearest == null) return;
+
+            var go = new GameObject("GasolinaVolando");
+            go.transform.position = transform.position;
+            go.transform.localScale = _baseScale;
+            var sr = go.AddComponent<SpriteRenderer>();
+            sr.sprite = _renderers[0].sprite;
+            sr.sortingLayerID = _renderers[0].sortingLayerID;
+            sr.sortingOrder = _renderers[0].sortingOrder + 1;
+            go.AddComponent<FlyToTarget>().Init(nearest.transform, 0.28f);
+        }
+
         /// <summary>Vuelve a mostrar el bidon (revancha).</summary>
         public void ResetServer()
         {
             if (!IsServer) return;
             IsAvailable.Value = true;
+        }
+    }
+
+    /// <summary>Mueve un objeto hacia un objetivo, lo achica y lo destruye al llegar.</summary>
+    public class FlyToTarget : MonoBehaviour
+    {
+        private Transform _target;
+        private float _duration;
+        private float _t;
+        private Vector3 _start;
+        private Vector3 _startScale;
+
+        public void Init(Transform target, float duration)
+        {
+            _target = target;
+            _duration = Mathf.Max(0.05f, duration);
+            _start = transform.position;
+            _startScale = transform.localScale;
+        }
+
+        private void Update()
+        {
+            _t += Time.deltaTime / _duration;
+            if (_target == null || _t >= 1f)
+            {
+                Destroy(gameObject);
+                return;
+            }
+            float k = _t * _t; // acelera al acercarse
+            transform.position = Vector3.Lerp(_start, _target.position, k);
+            transform.localScale = _startScale * (1f - 0.8f * _t);
         }
     }
 }

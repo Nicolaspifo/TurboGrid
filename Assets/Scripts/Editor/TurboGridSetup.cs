@@ -25,7 +25,7 @@ namespace TurboGrid.EditorTools
     /// Es seguro ejecutarlo varias veces: los objetos generados llevan el prefijo "TG_"
     /// y se regeneran. Los objetos originales del equipo solo se desactivan, no se borran.
     /// </summary>
-    public static class TurboGridSetup
+    public static partial class TurboGridSetup
     {
         private const string SCENES = "Assets/Scenes/";
         private const string MAIN_MENU = SCENES + "MainMenu.unity";
@@ -1265,11 +1265,7 @@ namespace TurboGrid.EditorTools
             fill.raycastTarget = false;
             Stretch(fill.rectTransform);
 
-            var text = MakeText(img.transform, "Etiqueta", label, 24, TextAlignmentOptions.Center, Color.white);
-            SetRect(text.rectTransform, Bottom, Bottom, Top, new Vector2(0f, -2f), new Vector2(220f, 34f));
-            text.raycastTarget = false;
-            text.outlineWidth = 0.2f;
-            text.outlineColor = new Color32(10, 20, 50, 255);
+            // Sin texto debajo: el icono ya se entiende solo (pedido del equipo).
 
             var ui = img.gameObject.AddComponent<AbilityButtonUI>();
             ui.Configure(type, button, img, fill);

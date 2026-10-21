@@ -112,6 +112,26 @@ namespace TurboGrid
                         ? "<color=#4FC3F7>¡DRS ACTIVADO!</color>"
                         : $"<color=#4FC3F7>¡{playerName} activo el DRS!</color>", 2.5f);
                     break;
+                case PlayerNetworkData.PowerUpFeed.RecogioEscudo:
+                    ShowFeed(isMe
+                        ? "<color=#4DD9AC>¡ESCUDO! Bloquea el proximo Pinchazo</color>"
+                        : $"<color=#4DD9AC>{playerName} tiene ESCUDO</color>", 2.5f);
+                    break;
+                case PlayerNetworkData.PowerUpFeed.RecogioIman:
+                    ShowFeed(isMe
+                        ? "<color=#FF6B6B>¡IMAN! Atraes la gasolina cercana</color>"
+                        : $"<color=#FF6B6B>{playerName} activo el IMAN</color>", 2.5f);
+                    break;
+                case PlayerNetworkData.PowerUpFeed.RecogioDoblePuntos:
+                    ShowFeed(isMe
+                        ? "<color=#FFD54F>¡PUNTOS x2! Cada bidon vale el doble</color>"
+                        : $"<color=#FFD54F>{playerName} tiene PUNTOS x2</color>", 2.5f);
+                    break;
+                case PlayerNetworkData.PowerUpFeed.EscudoBloqueo:
+                    ShowFeed(isMe
+                        ? "<color=#4DD9AC>¡Tu escudo bloqueo el Pinchazo!</color>"
+                        : $"<color=#4DD9AC>El escudo de {playerName} bloqueo el Pinchazo</color>", 2.5f);
+                    break;
             }
         }
 
@@ -263,6 +283,9 @@ namespace TurboGrid
                 if (p.IsDrsActive.Value) _sb.Append("  <color=#4FC3F7><size=80%>DRS!</size></color>");
                 else if (p.HasDrs.Value) _sb.Append("  <color=#4FC3F7><size=80%>[DRS]</size></color>");
                 if (p.HasPinchazo.Value) _sb.Append("  <color=#C77DFF><size=80%>[PINCH]</size></color>");
+                if (p.HasShield.Value) _sb.Append("  <color=#4DD9AC><size=80%>[ESC]</size></color>");
+                if (p.IsMagnetActive) _sb.Append("  <color=#FF6B6B><size=80%>IMAN</size></color>");
+                if (p.IsDoublePointsActive) _sb.Append("  <color=#FFD54F><size=80%>x2</size></color>");
                 if (i < _sorted.Count - 1) _sb.Append('\n');
             }
             leaderboardText.text = _sb.ToString();

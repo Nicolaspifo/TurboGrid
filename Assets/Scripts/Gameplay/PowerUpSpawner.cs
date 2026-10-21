@@ -5,8 +5,9 @@ using UnityEngine;
 namespace TurboGrid
 {
     /// <summary>
-    /// Mantiene 2 power-ups en pista: 1 DRS y 1 Pinchazo. Cuando alguien recoge uno,
-    /// reaparece despues de unos segundos en otro punto aleatorio del circuito.
+    /// Mantiene power-ups en pista (por defecto 3 DRS y 1 Pinchazo; se ajusta en el
+    /// inspector). Cuando alguien recoge uno, reaparece despues de unos segundos en
+    /// otro punto aleatorio del circuito.
     /// Usa los puntos de TrackWaypoints que no ocupo la gasolina.
     /// Solo corre en el servidor. Va en el mismo GameObject que RaceManager
     /// (o cualquier objeto de la escena de carrera).
@@ -16,6 +17,13 @@ namespace TurboGrid
         public static PowerUpSpawner Instance { get; private set; }
 
         [SerializeField] private GameObject powerUpPrefab;
+        [Tooltip("Cuantos DRS hay en pista al mismo tiempo.")]
+        [SerializeField, Min(0)] private int drsCount = 3;
+        [Tooltip("Cuantos Pinchazos hay en pista al mismo tiempo.")]
+        [SerializeField, Min(0)] private int pinchazoCount = 1;
+        [SerializeField, Min(0)] private int escudoCount = 1;
+        [SerializeField, Min(0)] private int imanCount = 1;
+        [SerializeField, Min(0)] private int doblePuntosCount = 1;
         [Tooltip("Distancia minima entre un power-up nuevo y el anterior (para que 'se mueva').")]
         [SerializeField] private float minDistanceFromPrevious = 250f;
 
@@ -44,8 +52,16 @@ namespace TurboGrid
                 return;
             }
 
-            SpawnOne(PowerUpType.Drs, Vector2.positiveInfinity);
-            SpawnOne(PowerUpType.Pinchazo, _pickups.Count > 0 ? (Vector2)_pickups[0].transform.position : Vector2.positiveInfinity);
+            for (int i = 0; i < drsCount; i++) SpawnOne(PowerUpType.Drs, LastPosition());
+            for (int i = 0; i < pinchazoCount; i++) SpawnOne(PowerUpType.Pinchazo, LastPosition());
+            for (int i = 0; i < escudoCount; i++) SpawnOne(PowerUpType.Escudo, LastPosition());
+            for (int i = 0; i < imanCount; i++) SpawnOne(PowerUpType.Iman, LastPosition());
+            for (int i = 0; i < doblePuntosCount; i++) SpawnOne(PowerUpType.DoblePuntos, LastPosition());
+        }
+
+        private Vector2 LastPosition()
+        {
+            return _pickups.Count > 0 ? (Vector2)_pickups[_pickups.Count - 1].transform.position : Vector2.positiveInfinity;
         }
 
         private void SpawnOne(PowerUpType type, Vector2 avoid)
